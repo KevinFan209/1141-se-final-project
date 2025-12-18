@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>專案管理 - {{ project.title }}</title>
+    <style type="text/css">
+        body {
+            width: 70%;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 30pt;
+            background-color: #9CF;
+        }
+        h2 {            
+            font-size: 20pt;
+            margin: 0px 0px 0px 50px;
+        }
+        a{
+            text-decoration-line: none;
+            color: #000;
+            font-weight: bold;
+            font-size: 18pt;
+            background-color: #CEF;
+            margin: 0px 0px 0px 50px;
+        }
+        a:hover {
+            color: ivory;
+            background-color: #000;
+        }
+        button {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 0px 0px 0px 50px;
+        }
+        p {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 10px 0px 10px 0px;
+        }
+        li {
+            font-weight: bold;
+            font-size: 15pt;
+        }
+    </style>
+</head>
+<body>
+    {% if flash %}
+        <div style="padding:10px; background-color: #d4edda; color:#155724; border:1px solid #c3e6cb; margin-bottom:10px;">
+            {{ flash }}
+        </div>
+    {% endif %}
+    <h1>專案管理：{{ project.title }}</h1>
+
+    <p><b>描述：</b> {{ project.description }}</p>
+    <hr>
+
+    <h3>已上傳進度檔案</h3>
+    {% if in_process_data %}
+        <ul>
+            {% for date, files in in_process_data.items() %}
+                <li>{{ date }}
+                    <ul>
+                    {% for file in files %}
+                        <li>
+                            {{ file }}
+                            <a href="/projects/download_zip?project_title={{ project.title }}&folder={{ date }}&stage=in_process" target="_blank">下載壓縮檔</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>目前尚未上傳進度檔案。</p>
+    {% endif %}
+
+    <hr>
+
+    <h3>已上傳結案檔案</h3>
+    {% if final_data %}
+        <ul>
+            {% for date, files in final_data.items() %}
+                <li>{{ date }}
+                    <ul>
+                    {% for file in files %}
+                        <li>
+                            {{ file }}
+                            <a href="/projects/download_zip?project_title={{ project.title }}&folder={{ date }}&stage=final" target="_blank">下載壓縮檔</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>  
+    </form>
+    {% else %}
+        <p>尚未上傳結案檔案。</p>
+    {% endif %}
+
+    <hr>
+
+    {% if not final_data %}
+        <a href="/upload/upload_project/{{ project.id }}">上傳檔案 / 結案檔案</a>
+    {% endif %}
+    {% if project.status == "in_process" %}
+        {% if final_data %}
+        <form action="/projects/request_close/{{ project.id }}" method="post">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('確定送出結案請求？');">請求結案</button>
+        </form>
+        {% endif %}
+    {% elif project.status == "request_close" %}
+        <p style="color: orange;">等待委託人審核結案中...</p>
+    {% elif project.status == "closed" %}
+        <p style="color: green;">專案已結案，無法再上傳。</p>
+    {% endif %}
+    <p>最新請求結果: </p>
+    {% if latest_rejection and not project.status == "closed" %}
+        <div>
+            <p style="color: red;">退件</p><br/>
+            <strong>退件日期：</strong> {{ latest_rejection.rejection_date.strftime('%Y-%m-%d %H:%M') }}<br>
+            <strong>退件說明：</strong> {{ latest_rejection.explanation }}
+        </div>
+    {% endif %}
+    {% if project.status == "closed" %}
+    <div>
+        <p style="color: green;;">結案</p><br/>
+        <strong>結案日期：</strong> {{ project.close_time.strftime('%Y-%m-%d %H:%M') }}<br>
+        <strong>結案說明：</strong> {{ project.close_explanation }}
+    </div>
+{% endif %}
+    <br><br>
+    <a href="/projects/my_bids">返回專案列表</a>
+</body>
+</html>

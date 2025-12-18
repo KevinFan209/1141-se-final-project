@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>首頁</title>
+    <script>
+        function tripleConfirm() {
+            if (confirm('確定刪除帳號？')) {
+            if (confirm('真的確定要刪除帳號嗎？')) {
+                return confirm('最後一次確認，您確定要刪除帳號？');
+            }
+            }
+            return false;
+        }
+    </script>
+    <style type="text/css">
+        body {
+            width: 70%;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 30pt;
+            background-color: #9CF;
+        }
+        h2 {            
+            font-size: 20pt;
+            margin: 25px 25px 25px 0px;
+        }
+        a {
+            text-decoration-line: none;
+            color: #000;
+            font-weight: bold;
+            font-size: 18pt;
+            background-color: #CEF;
+            margin: 10px 0px 10px 50px;
+        }
+        a:hover {
+            color: ivory;
+            background-color: #000;
+        }
+        button {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 0px 0px 0px 250px;
+        }
+    </style>
+</head>
+<body>
+    {% if flash %}
+        <div style="padding:10px; background-color: #d4edda; color:#155724; border:1px solid #c3e6cb; margin-bottom:10px;">
+            {{ flash }}
+        </div>
+    {% endif %}
+    <h1>工作委託平台</h1><br/>
+    {% if user %}
+        <h2>歡迎, {{ user.username }} ({{ user.role }})</h2>
+        <a href="/logout" onclick="return confirm('確定登出？');">登出</a>
+        <form method="post" action="/auth/delete_account" onsubmit="return tripleConfirm()">
+            <button type="submit">刪除帳號</button>
+        </form>
+        <br>
+
+        {% if user.role == "client" %}
+            <h3>委託人功能</h3>
+            <a href="/projects/create_page">建立新專案</a><br>
+            <a href="/projects/my_projects">我的專案列表</a><br>
+        {% elif user.role == "contractor" %}
+            <h3>接案人功能</h3>
+            <a href="/projects/available_page">查看可承接專案</a><br>
+            <a href="/projects/my_bids">我的承包專案</a><br>
+        {% endif %}
+
+    {% else %}
+        <h2>歡迎! 您尚未登入</h2><br/>
+        <a href="/login">登入</a><a href="/register">註冊</a>
+    {% endif %}
+</body>
+</html>

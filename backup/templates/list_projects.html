@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>專案列表</title>
+    <style type="text/css">
+        body {
+            width: 70%;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 30pt;
+            background-color: #9CF;
+        }
+        h2 {            
+            font-size: 20pt;
+            margin: 0px 0px 0px 50px;
+        }
+        a {
+            text-decoration-line: none;
+            color: #000;
+            font-weight: bold;
+            font-size: 18pt;
+            background-color: #ADF;
+            margin: 0px 0px 0px 50px;
+        }
+        a:hover {
+            color: ivory;
+            background-color: #000;
+        }
+        button {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 0px 0px 0px 50px;
+        }
+        p {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 50px 0px 50px 50px;
+        }
+        #project {
+            width: 80%;
+            background-color: #CEF;
+            margin: 20pt 20pt 20pt 80pt ;
+        }
+        li {
+            list-style-type: none;
+        }
+        b {
+            font-size: 15pt;
+        }
+    </style>
+</head>
+<body>
+    {% if flash %}
+        <div style="padding:10px; background-color: #d4edda; color:#155724; border:1px solid #c3e6cb; margin-bottom:10px;">
+            {{ flash }}
+        </div>
+    {% endif %}
+    <h1>專案列表</h1>
+    {% if projects %}
+        <ul>
+        {% for project in projects %}
+            <li><div id="project">
+                <b>專案名稱: {{ project.title }}</b>
+                {% if user and user.id == project.client_id %}
+                    <form action="/projects/delete/{{ project.id }}" onclick="return confirm('確定刪除？');" method="post" style="display:inline;">
+                        <button type="submit">刪除專案</button>
+                    </form>
+                {% endif %}
+                <br/>狀態: {{ project.status }}
+                <br>專案描述: {{ project.description }}
+                <br>委託上傳時間: {{ project.create_time}}
+                <br>報價截止：{{ project.proposal_deadline }}
+                <br/>
+
+                {% if user.role == "contractor" %}
+                    {% set user_bids = project.bids | selectattr("contractor_id", "equalto", user.id) | list %}
+                    {% if user_bids %}
+                        {% set bid = user_bids[0] %}
+                        <p>已報價：${{ bid.price }}</p>
+
+                        {% if bid.status == "rejected" %}
+                            <p style="color:red;">報價已被拒絕</p>
+                            <form method="post" action="/bids/remove">
+                                <input type="hidden" name="bid_id" value="{{ bid.id }}">
+                                <button type="submit" onclick="return confirm('確定移除？');">移除此專案</button>
+                            </form>
+                        {% elif bid.status == "accepted" %}                            
+                            {% if project.status == "closed" %}
+                                <p style="color:green;">已結案</p>                                
+                            {% else %}
+                                <p style="color:orange;">報價已被接受，專案進行中</p>
+                            {% endif %}
+                            <a href="/projects/manage_contractor/{{ project.id }}">前往專案</a>
+                        {% else %}
+                            <p style="color:#F60;">等待委託人選擇</p>
+                        {% endif %}
+                    {% else %}
+                        {% if project.status == "open" %}
+                            {{project.status}}
+                            <form method="post" action="/projects/bid" enctype="multipart/form-data">
+                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                報價: <input type="number" name="price" required><br>
+                                計劃書: <input type="file" name="file" accept=".pdf" required><br>
+                                <button type="submit" onclick="return confirm('確定報價？');">提交承包意願</button>
+                            </form>
+                        {% else %}
+                            <p style="color:red;">已超過報價時間無法提案</p>
+                        {% endif %}
+                    {% endif %}
+
+                {% elif user.role == "client" %}
+                    {% if project.assigned_contractor_id %}
+                        <p>已選定接案人：{{ project.contractor.username }}</p>
+                        {% if project.status == "closed" %}
+                                <p style="color:green;">已結案</p>                                
+                            {% else %}
+                                <p style="color:orange;">專案進行中</p>
+                                {% if project.status == "request_close" %}
+                                    <p style="color:#F40;">接案人要求結案</p>
+                                {% endif %}
+                            {% endif %}
+                        <a href="/projects/manage_client/{{ project.id }}">前往管理專案</a><br/>
+                    {% else %}
+                        {% if project.bids %}
+                            <b>接案人候選:</b>
+                            <ul>
+                            {% for bid in project.bids %}
+                                <li>{{ bid.contractor.username }} - ${{ bid.price }}
+                                    <form method="post" action="/projects/assign" style="display:inline;">
+                                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                                        <input type="hidden" name="contractor_id" value="{{ bid.contractor_id }}">
+                                        <button type="submit" onclick="return confirm('確定選擇此接案人？');">選定接案人</button>
+                                    </form><a href="/projects/proposal_download_zip?path={{ bid.proposal_file }}">下載計畫書</a>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            {% if project.status == "open" %}
+                                <p>尚無接案人報價</p>
+                            {% else %}
+                                <p style="color: red;">已超過報價時間，無人報價</p>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+                </div>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>目前沒有專案</p>
+    {% endif %}
+    <a href="/">返回首頁</a>
+</body>
+</html>
