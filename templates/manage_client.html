@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>專案管理 - {{ project.title }}</title>
+    <style type="text/css">
+        body {
+            width: 70%;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 30pt;
+            background-color: #9CF;
+        }
+        h2 {            
+            font-size: 20pt;
+            margin: 0px 0px 0px 50px;
+        }
+        a {
+            text-decoration-line: none;
+            color: #000;
+            font-weight: bold;
+            font-size: 18pt;
+            background-color: #CEF;
+            margin: 0px 0px 0px 50px;
+        }
+        a:hover {
+            color: ivory;
+            background-color: #000;
+        }
+        button {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 0px 0px 0px 50px;
+        }
+        li, p {
+            font-weight: bold;
+            font-size: 15pt;
+        }
+    </style>
+</head>
+<body>
+    {% if flash %}
+        <div style="padding:10px; background-color: #d4edda; color:#155724; border:1px solid #c3e6cb; margin-bottom:10px;">
+            {{ flash }}
+        </div>
+    {% endif %}
+    <h1>專案管理</h1>
+    <p><b>描述：</b> {{ project.description }}</p>
+    <hr/>
+    <p><b>狀態：</b> {{ project.status }}</p>
+    <p><b>接案人：</b> {{ project.contractor.username if project.contractor else "尚未指派" }}</p>
+    <hr/>
+    <h3>接案人上傳進度檔案（依上傳日期分類）</h3>
+        {% if in_process_data %}
+            <ul>
+            {% for date, files in in_process_data.items() %}
+                <li>{{ date }}
+                    <ul>
+                    {% for file in files %}
+                        <li>
+                            {{ file }}
+                            <a href="/projects/download_zip?project_title={{ project.title }}&folder={{ date }}&stage=in_process" target="_blank">下載壓縮檔</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>尚未上傳進度檔案。</p>
+        {% endif %}
+
+        <hr>
+
+        <h3>接案人上傳結案檔案</h3>
+        {% if final_data %}
+            <ul>
+            {% for date, files in final_data.items() %}
+                <li>{{ date }}
+                    <ul>
+                    {% for file in files %}
+                        <li>
+                            {{ file }}
+                            <a href="/projects/download_zip?project_title={{ project.title }}&folder={{ date }}&stage=final" target="_blank">下載壓縮檔</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>尚未上傳結案檔案。</p>
+        {% endif %}
+    {% if project.status == "request_close" %}
+        <h3>接案人已請求結案</h3>
+        <a href="/projects/decision/{{ project.id }}">點擊前往審核</a>
+    {% elif project.status == "closed" %}
+        <p style="color: green;">專案已結案</p>
+    {% endif %}
+
+    <p><a href="/projects/my_projects">返回我的專案列表</a></p>
+</body>
+</html>

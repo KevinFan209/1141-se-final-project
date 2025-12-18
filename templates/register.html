@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>註冊</title>
+    <style type="text/css">
+        body {
+            width: 70%;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 30pt;
+            background-color: #9CF;
+        }
+        h2 {            
+            font-size: 20pt;
+            margin: 0px 0px 0px 50px;
+        }
+        a {
+            text-decoration-line: none;
+            color: #000;
+            font-weight: bold;
+            font-size: 18pt;
+            background-color: #CEF;
+            margin: 0px 0px 0px 50px;
+        }
+        a:hover {
+            color: ivory;
+            background-color: #000;
+        }
+        button {
+            font-weight: bold;
+            font-size: 15pt;
+            margin: 0px 0px 0px 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>註冊</h1>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="/auth/register">
+        <input type="text" name="username" placeholder="Username" required autocomplete="off"><br>
+        <input type="email" name="email" placeholder="Email" required autocomplete="off"><br>
+        <input type="password" name="password" placeholder="Password" required autocomplete="off"><br>
+        <select name="role" required>
+            <option value="client">委託人</option>
+            <option value="contractor">接案人</option>
+        </select><br>
+        <button type="submit">註冊</button>
+    </form>
+    <p>已經有帳號？<a href="/login">登入</a></p><br/>
+    <a href="/">返回首頁</a>
+</body>
+</html>
