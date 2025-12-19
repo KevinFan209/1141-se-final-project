@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>✨ 發布新的委託專案</h2>
+    <form method="POST">
+        <label for="title">專案標題 (簡述):</label>
+        <input type="text" name="title" required>
+        
+        <label for="description">專案詳細需求:</label>
+        <textarea name="description" rows="10" required></textarea>
+        
+        <button type="submit" class="btn btn-success">發布專案</button>
+        <a href="{{ url_for('client_dashboard') }}" class="btn btn-info">← 返回儀表板</a>
+    </form>
+{% endblock %}

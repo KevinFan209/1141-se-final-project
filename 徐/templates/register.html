@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>📝 帳號註冊</h2>
+    <form method="POST">
+        <label for="username">使用者名稱:</label>
+        <input type="text" name="username" required>
+        
+        <label for="password">密碼:</label>
+        <input type="password" name="password" required>
+        
+        <label for="role">角色:</label>
+        <select name="role" required>
+            <option value="client">委託人</option>
+            <option value="contractor">接案人</option>
+        </select>
+        <br><br>
+        <button type="submit" class="btn btn-success">註冊</button>
+    </form>
+    <p>已經有帳號了? <a href="{{ url_for('login') }}">登入</a></p>
+{% endblock %}

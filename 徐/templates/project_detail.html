@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>🔍 專案詳情：{{ project.title }}</h2>
+
+    <p>
+        狀態: <span class="status-{{ project.status }}">{{ project.status }}</span> |
+        委託人: **{{ project.client.username }}** |
+        {% if project.contractor %}
+            接案人: **{{ project.contractor.username }}** {% else %}
+            接案人: 待定
+        {% endif %}
+    </p>
+
+    <h3>詳細需求描述</h3>
+    <p>{{ project.description }}</p>
+
+    <!-- ✅ (A) 乙方查看需求：顯示甲方（委託人）過往平均評價與質性意見 -->
+    {% if is_contractor %}
+    <div style="border:1px solid #ddd; padding:12px; margin:12px 0;">
+      <h3>⭐ 委託人評價</h3>
+      <p>
+        平均評分：<b>{{ "%.2f"|format(client_rating.avg_rating) }}</b> / 5
+        （共 {{ client_rating.count }} 則）
+      </p>
+
+      {% if client_rating.recent_comments and client_rating.recent_comments|length > 0 %}
+        <ul>
+          {% for c in client_rating.recent_comments %}
+            <li>
+              <b>{{ c.reviewer_name }}</b>（{{ "%.2f"|format(c.avg_score) }}/5）：
+              {{ c.comment }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p style="color:#666;">目前尚無文字評論。</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <hr>
+
+    {# -------------------------------------------------------------------------------- #}
+    {# 角色功能區塊 #}
+    {# -------------------------------------------------------------------------------- #}
+
+    {% if is_client %}
+        {# ---------------------- 委託人功能區 ---------------------- #}
+
+        {% if project.status == 'open' %}
+            <h3>💰 報價列表 ({{ proposals | length }} 份報價)</h3>
+            {% if proposals %}
+                <table>
+                    <tr>
+                        <th>報價人</th>
+                        <th>報價金額 (NTD)</th>
+                        <th>報價細節</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                    {% for proposal in proposals %}
+                    <tr>
+                        <td>
+                            {{ proposal.contractor.username }}
+
+                            <!-- ✅ (B) 甲方查看提案：顯示乙方（接案人）平均評價與質性意見 -->
+                            {% set r = contractor_ratings.get(proposal.contractor_id) %}
+                            {% if r %}
+                              <div style="border:1px dashed #bbb; padding:10px; margin:10px 0;">
+                                <p style="margin:0 0 6px 0;">
+                                  接案人評價：<b>{{ "%.2f"|format(r.avg_rating) }}</b> / 5（{{ r.count }} 則）
+                                </p>
+                                {% if r.recent_comments and r.recent_comments|length > 0 %}
+                                  <details>
+                                    <summary>查看最近評論</summary>
+                                    <ul>
+                                      {% for c in r.recent_comments %}
+                                        <li><b>{{ c.reviewer_name }}</b>：{{ c.comment }}</li>
+                                      {% endfor %}
+                                    </ul>
+                                  </details>
+                                {% else %}
+                                  <p style="color:#666; margin:0;">尚無文字評論。</p>
+                                {% endif %}
+                              </div>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ proposal.price | round(2) }}</td>
+                        <td>{{ proposal.details }}</td>
+                        <td>{{ proposal.status }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('accept_proposal', proposal_id=proposal.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-success" onclick="return confirm('確定接受此報價嗎？接受後專案將進入進行中狀態！')">選擇此報價</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p>目前沒有任何報價。</p>
+            {% endif %}
+
+        {% elif project.status == 'waiting_review' %}
+            {# ---------------------- 委託人：結案管理 (退件、接受結案) ---------------------- #}
+            <h3>✅ 結案審核</h3>
+            <p>接案人已提交結案檔案：
+                {% if project.delivery_file_path %}
+                    <a href="{{ url_for('download_delivery', filename=project.delivery_file_path) }}" class="btn btn-info">下載結案檔案</a>
+                {% else %}
+                    **[檔案路徑遺失或未正確儲存]**
+                {% endif %}
+            </p>
+
+            <form method="POST" action="{{ url_for('review_delivery', project_id=project.id) }}" style="display:inline;">
+                <input type="hidden" name="action" value="accept">
+                <button type="submit" class="btn btn-success" onclick="return confirm('確定接受結案嗎？接受後專案將結案！')">✅ 接受結案</button>
+            </form>
+
+            <form method="POST" action="{{ url_for('review_delivery', project_id=project.id) }}" style="display:inline;">
+                <input type="hidden" name="action" value="reject">
+                <button type="submit" class="btn btn-warning" onclick="return confirm('確定退件嗎？專案將退回進行中狀態。')">⚠️ 退件 (要求修改)</button>
+            </form>
+
+        {% elif project.status == 'pending' %}
+            <h3>進行中</h3>
+            <p>專案已委託給 **{{ project.contractor.username }}**，等待對方提交結案檔案。</p>
+
+        {% elif project.status == 'closed' %}
+            <h3>已結案</h3>
+            <p>專案已於 {{ project.created_at.strftime('%Y-%m-%d') }} 成功結案。</p>
+
+            <!-- ✅ (C) 結案後互評（圖片一需求） -->
+            {% if project.contractor_id %}
+              <div style="border:2px solid #333; padding:14px; margin-top:18px;">
+                <h3>互評機制</h3>
+                <p style="color:#555;">結案後 {{ review_deadline_days }} 天內可評價合作對象（三維度 1~5 星 + 文字評論）。</p>
+
+                {% if my_existing_review %}
+                  <p style="color:green;"><b>你已送出評價：</b>（{{ my_existing_review.avg_score()|round(2) }}/5）</p>
+                  <ul>
+                    <li>分數1：{{ my_existing_review.score_1 }}</li>
+                    <li>分數2：{{ my_existing_review.score_2 }}</li>
+                    <li>分數3：{{ my_existing_review.score_3 }}</li>
+                  </ul>
+                  {% if my_existing_review.comment %}
+                    <p>評論：{{ my_existing_review.comment }}</p>
+                  {% endif %}
+                {% else %}
+                  {% if can_review %}
+                    <p><b>評價維度：</b>{{ review_dims[0] }}、{{ review_dims[1] }}、{{ review_dims[2] }}</p>
+
+                    <form method="POST" action="{{ url_for('submit_review', project_id=project.id) }}">
+                      <label>{{ review_dims[0] }}（1~5）</label>
+                      <input type="number" name="score_1" min="1" max="5" required><br><br>
+
+                      <label>{{ review_dims[1] }}（1~5）</label>
+                      <input type="number" name="score_2" min="1" max="5" required><br><br>
+
+                      <label>{{ review_dims[2] }}（1~5）</label>
+                      <input type="number" name="score_3" min="1" max="5" required><br><br>
+
+                      <label>整體評論（選填）</label><br>
+                      <textarea name="comment" rows="3" style="width:100%;"></textarea><br><br>
+
+                      <button type="submit" class="btn btn-success">送出評價</button>
+                    </form>
+                  {% else %}
+                    <p style="color:#b00;">目前無法評價（可能已超過期限或不符合條件）。</p>
+                  {% endif %}
+                {% endif %}
+              </div>
+            {% endif %}
+
+        {% endif %}
+
+    {% elif is_contractor %}
+        {# ---------------------- 接案人功能區 ---------------------- #}
+
+        {% if project.status == 'open' and not my_proposal %}
+            {# ---------------------- 接案人：提出承包意願 (報價) ---------------------- #}
+            <h3>💵 提出承包意願</h3>
+            <form method="POST" action="{{ url_for('make_proposal', project_id=project.id) }}">
+                <label for="price">您的報價金額 (NTD):</label>
+                <input type="number" name="price" step="0.01" required>
+
+                <label for="details">報價說明 / 預計工期:</label>
+                <textarea name="details" rows="5" required></textarea>
+
+                <button type="submit" class="btn btn-success">提交報價</button>
+            </form>
+
+        {% elif project.status == 'open' and my_proposal %}
+            <h3>✅ 已報價</h3>
+            <p>您已報價 NTD {{ my_proposal.price | round(2) }}，目前報價狀態為 **{{ my_proposal.status }}**，等待委託人審核。</p>
+
+        {% elif project.status == 'pending' and is_contractor_assigned %}
+            {# ---------------------- 接案人：上傳結案檔案 ---------------------- #}
+            <h3>📤 提交結案檔案</h3>
+            <form method="POST" action="{{ url_for('submit_delivery', project_id=project.id) }}" enctype="multipart/form-data">
+                <p>專案已被您承接，請上傳最終結案檔案。</p>
+                <label for="file">選擇檔案:</label>
+                <input type="file" name="file" required>
+                <br><br>
+                <button type="submit" class="btn btn-success">提交結案</button>
+            </form>
+
+        {% elif project.status == 'waiting_review' and is_contractor_assigned %}
+            <h3>⏳ 等待審核</h3>
+            <p>您已提交結案檔案
+                {% if project.delivery_file_path %}
+                    **{{ project.delivery_file_path }}**
+                {% else %}
+                    **[檔案路徑遺失或未正確儲存]**
+                {% endif %}
+                ，等待委託人審核中。
+            </p>
+            <p class="flash warning">如果被退件，專案狀態會回到「pending」，您將需要重新提交。</p>
+
+        {% elif project.status == 'closed' and is_contractor_assigned %}
+            <h3>🎉 專案已成功結案</h3>
+            <p>專案已完成並結案。</p>
+
+            <!-- ✅ (C) 結案後互評（接案人也要能評委託人） -->
+            {% if project.contractor_id %}
+              <div style="border:2px solid #333; padding:14px; margin-top:18px;">
+                <h3>互評機制</h3>
+                <p style="color:#555;">結案後 {{ review_deadline_days }} 天內可評價合作對象（三維度 1~5 星 + 文字評論）。</p>
+
+                {% if my_existing_review %}
+                  <p style="color:green;"><b>你已送出評價：</b>（{{ my_existing_review.avg_score()|round(2) }}/5）</p>
+                  <ul>
+                    <li>分數1：{{ my_existing_review.score_1 }}</li>
+                    <li>分數2：{{ my_existing_review.score_2 }}</li>
+                    <li>分數3：{{ my_existing_review.score_3 }}</li>
+                  </ul>
+                  {% if my_existing_review.comment %}
+                    <p>評論：{{ my_existing_review.comment }}</p>
+                  {% endif %}
+                {% else %}
+                  {% if can_review %}
+                    <p><b>評價維度：</b>{{ review_dims[0] }}、{{ review_dims[1] }}、{{ review_dims[2] }}</p>
+
+                    <form method="POST" action="{{ url_for('submit_review', project_id=project.id) }}">
+                      <label>{{ review_dims[0] }}（1~5）</label>
+                      <input type="number" name="score_1" min="1" max="5" required><br><br>
+
+                      <label>{{ review_dims[1] }}（1~5）</label>
+                      <input type="number" name="score_2" min="1" max="5" required><br><br>
+
+                      <label>{{ review_dims[2] }}（1~5）</label>
+                      <input type="number" name="score_3" min="1" max="5" required><br><br>
+
+                      <label>整體評論（選填）</label><br>
+                      <textarea name="comment" rows="3" style="width:100%;"></textarea><br><br>
+
+                      <button type="submit" class="btn btn-success">送出評價</button>
+                    </form>
+                  {% else %}
+                    <p style="color:#b00;">目前無法評價（可能已超過期限或不符合條件）。</p>
+                  {% endif %}
+                {% endif %}
+              </div>
+            {% endif %}
+
+        {% endif %}
+
+    {% else %}
+        {# ---------------------- 公開專案 (非登入者或非相關人士) ---------------------- #}
+        {% if project.status == 'open' %}
+            <h3>ℹ️ 此為開放專案</h3>
+            <p>此專案目前公開招募中。請登入接案人帳號即可提交報價。</p>
+        {% endif %}
+    {% endif %}
+
+    <hr>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-info">← 返回儀表板</a>
+{% endblock %}

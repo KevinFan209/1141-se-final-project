@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>💼 委託人儀表板</h2>
+    <p>您好，{{ current_user.username }}。在這裡您可以管理您的專案委託。</p>
+
+    <h3>✨ 專案操作</h3>
+    <a href="{{ url_for('create_project') }}" class="btn btn-success">+ 建立/發布新專案</a>
+    
+    <hr>
+    
+    <h3>📝 我的專案列表 (進行中或公開中, 共 {{ projects | length }} 個)</h3>
+    {% if projects %}
+        <table>
+            <tr>
+                <th>專案標題</th>
+                <th>狀態</th>
+                <th>發布時間</th>
+                <th>接案人</th>
+                <th>操作</th>
+            </tr>
+            {% for project in projects %}
+            <tr>
+                <td><a href="{{ url_for('project_detail', project_id=project.id) }}">{{ project.title }}</a></td>
+                <td><span class="status-{{ project.status }}">{{ project.status }}</span></td>
+                <td>{{ project.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ project.contractor.username | ternary(project.contractor.username, '待定') }}</td>
+                <td>
+                    <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-info">查看詳情/報價</a>
+                    {% if project.status == 'open' %}
+                        <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn btn-warning">編輯專案</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>您尚未發布任何進行中或公開中的專案。</p>
+    {% endif %}
+
+    <hr>
+    
+    <h3>📜 歷史專案 (已結案/已拒絕, 共 {{ historical_projects | length }} 個)</h3>
+    {% if historical_projects %}
+        <table>
+            <tr>
+                <th>專案標題</th>
+                <th>狀態</th>
+                <th>發布時間</th>
+                <th>接案人</th>
+                <th>操作</th>
+            </tr>
+            {% for project in historical_projects %}
+            <tr>
+                <td><a href="{{ url_for('project_detail', project_id=project.id) }}">{{ project.title }}</a></td>
+                <td><span class="status-{{ project.status }}">{{ project.status }}</span></td>
+                <td>{{ project.created_at.strftime('%Y-%m-%d') }}</td>
+                <td>{{ project.contractor.username | ternary(project.contractor.username, '無') }}</td>
+                <td>
+                    <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-info">查看詳情</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>沒有歷史專案記錄。</p>
+    {% endif %}
+{% endblock %}

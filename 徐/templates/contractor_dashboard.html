@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>💼 接案人儀表板</h2>
+    <p>您好，{{ current_user.username }}。在這裡您可以查看並管理您參與的專案。</p>
+
+    <hr>
+    
+    <h3>🔥 正在進行中專案 (共 {{ in_progress_projects | length }} 個)</h3>
+    {% if in_progress_projects %}
+        <table>
+            <tr>
+                <th>專案標題</th>
+                <th>狀態</th>
+                <th>委託人</th>
+                <th>操作</th>
+            </tr>
+            {% for project in in_progress_projects %}
+            <tr>
+                <td><a href="{{ url_for('project_detail', project_id=project.id) }}">{{ project.title }}</a></td>
+                <td><span class="status-{{ project.status }}">{{ project.status }}</span></td>
+                <td>{{ project.client.username }}</td>
+                <td><a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-info">查看/提交結案</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>目前沒有正在承包的進行中專案。</p>
+    {% endif %}
+    
+    <hr>
+
+    <h3>🔍 待接案專案列表 (共 {{ open_projects | length }} 個)</h3>
+    {% if open_projects %}
+        <table>
+            <tr>
+                <th>專案標題</th>
+                <th>發布時間</th>
+                <th>委託人</th>
+                <th>操作</th>
+            </tr>
+            {% for project in open_projects %}
+            <tr>
+                <td>{{ project.title }}</td>
+                <td>{{ project.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ project.client.username }}</td>
+                <td><a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-info">查看詳情/報價</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>目前沒有公開招募的專案。</p>
+    {% endif %}
+    
+    <hr>
+    
+    <h3>📜 歷史專案 (已結案/已拒絕, 共 {{ historical_projects | length }} 個)</h3>
+    {% if historical_projects %}
+        <table>
+            <tr>
+                <th>專案標題</th>
+                <th>狀態</th>
+                <th>委託人</th>
+                <th>操作</th>
+            </tr>
+            {% for project in historical_projects %}
+            <tr>
+                <td>{{ project.title }}</td>
+                <td><span class="status-{{ project.status }}">{{ project.status }}</span></td>
+                <td>{{ project.client.username }}</td>
+                <td><a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-info">查看詳情</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>目前沒有已結案或被拒絕的歷史專案。</p>
+    {% endif %}
+{% endblock %}

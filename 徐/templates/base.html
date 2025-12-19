@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專案媒合平台</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .navbar { background-color: #333; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; margin: 0 10px; }
+        .container { width: 80%; margin: 20px auto; background-color: white; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 4px; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .flash.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .status-open { background-color: #ccf; padding: 3px 5px; border-radius: 3px; }
+        .status-pending { background-color: #ffc; padding: 3px 5px; border-radius: 3px; }
+        .status-waiting_review { background-color: #fcc; padding: 3px 5px; border-radius: 3px; }
+        .status-closed { background-color: #cfc; padding: 3px 5px; border-radius: 3px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .btn { padding: 8px 15px; text-decoration: none; border-radius: 4px; cursor: pointer; display: inline-block; margin-right: 5px; }
+        .btn-success { background-color: #28a745; color: white; border: none; }
+        .btn-info { background-color: #17a2b8; color: white; border: none; }
+        .btn-warning { background-color: #ffc107; color: #333; border: none; }
+        .btn-danger { background-color: #dc3545; color: white; border: none; }
+        textarea, input[type="text"], input[type="number"], input[type="file"] { width: 100%; padding: 10px; margin: 5px 0 15px 0; display: inline-block; border: 1px solid #ccc; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="{{ url_for('dashboard') }}">**專案媒合平台**</a>
+        <div>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}">儀表板</a>
+                <span style="margin-right: 15px;">歡迎, {{ current_user.username }} ({{ current_user.role | ternary('委託人', '接案人', default='') }})</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-warning">登出</a>
+            {% else %}
+                <a href="{{ url_for('register') }}">註冊</a>
+                <a href="{{ url_for('login') }}">登入</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
