@@ -35,6 +35,15 @@ class Project(Base):# 專案屬性
 
     proposal_deadline = Column(DateTime, nullable=False)
 
+    #from 王茂綸
+    region = Column(Text, index=True)
+    budget = Column(Text, index=True)
+    attachments = Column()
+    created_at = Column(DateTime, default=datetime.now)
+    closed_at = Column(DateTime, default=datetime.now)
+    is_completed = Column(Boolean, default=False)
+    is_reply = Column(Boolean, default=False, nullable=False)
+
     #定義資料表之間的關係
     client = relationship("User", foreign_keys=[client_id])
     contractor = relationship("User", foreign_keys=[assigned_contractor_id])
