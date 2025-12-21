@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -34,15 +34,6 @@ class Project(Base):# 專案屬性
     close_explanation = Column(Text, nullable=True)
 
     proposal_deadline = Column(DateTime, nullable=False)
-
-    #from 王茂綸
-    region = Column(Text, index=True)
-    budget = Column(Text, index=True)
-    attachments = Column()
-    created_at = Column(DateTime, default=datetime.now)
-    closed_at = Column(DateTime, default=datetime.now)
-    is_completed = Column(Boolean, default=False)
-    is_reply = Column(Boolean, default=False, nullable=False)
 
     #定義資料表之間的關係
     client = relationship("User", foreign_keys=[client_id])
@@ -81,28 +72,27 @@ class Intents(Base): #from 王茂綸
     username = Column(String(50), unique=True, nullable=False)
     quote = Column(Text, nullable=False)
     message = Column(Text, nullable=False)
-    attachments = Column()
+    attachments = Column(JSON)
     created_at = Column(DateTime, default=datetime.now)
 
 class Issues(Base): #from 王茂綸
     __tablename__ = "issues"
+
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"))
     title = Column(String, nullable=False)
-    description = Column(Text, nullable=False)
-    issue_is_opened = Column(Boolean, nullable=False)
-    create_by =  Column(Integer, ForeignKey("users.id"))
-    assigned_to = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.now)
-    resolve_at = Column(DateTime, default=datetime.now)
+    status = Column(String, default="open")  # open / resolved
+    created_by = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class Issues_comments(Base): #from 王茂綸
-    __tablename__ = "issues_comments"
+    __tablename__ = "issue_comments"
+
     id = Column(Integer, primary_key=True, index=True)
     issue_id = Column(Integer, ForeignKey("issues.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class Replies(Base): #from 王茂綸
     __tablename__ = "replies"
@@ -111,7 +101,25 @@ class Replies(Base): #from 王茂綸
     responder_id = Column(Integer, unique=True)
     price_text = Column(String(100), nullable=False)
     message = Column(Text)
-    attachments = Column()
+    attachments = Column(JSON)
     status = Column(String(30))
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now)
+
+class Review(Base): #from 徐嘉笳
+    __tablename__ = "review"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), unique=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    reviewee_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    reviewee_role = Column(String(20), nullable=False)
+    score_1 = Column(Integer, nullable=False)
+    score_2 = Column(Integer, nullable=False)
+    score_3 = Column(Integer, nullable=False)
+    comment = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
+    def avg_score(self) -> float:
+        return (self.score_1 + self.score_2 + self.score_3) / 3.0
+
+    def __repr__(self):
+        return f'<Review {self.id} P{self.project_id} {self.reviewer_id}->{self.reviewee_id}>'
