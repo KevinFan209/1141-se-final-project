@@ -1,0 +1,29 @@
+<ul id="bidList"></ul>
+
+<script>
+async function loadBids(projectId) {
+  const res = await fetch(`get_bids.php?project_id=${projectId}`);
+  const bids = await res.json();
+
+  const list = document.getElementById('bidList');
+  list.innerHTML = '';
+  bids.forEach(bid => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      接案人：${bid.contractor_name}，報價：${bid.price}<br>
+      <button onclick="selectContractor(${projectId}, ${bid.contractor_id})">選擇此人</button>
+    `;
+    list.appendChild(li);
+  });
+}
+
+async function selectContractor(projectId, contractorId) {
+  const res = await fetch('select_contractor.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project_id: projectId, contractor_id: contractorId })
+  });
+  const result = await res.json();
+  alert(result.message);
+}
+</script>

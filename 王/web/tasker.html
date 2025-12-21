@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tasker 案件管理（承包者專用）</title>
+    <style>
+      :root {
+        --sidebar-w: 220px;
+        --accent: #e53935;
+        --brand: #4285f4;
+        --muted: #777;
+        --bg: #f7f8fb;
+        --card: #fff;
+        --reply-yellow: #ffca28;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Noto Sans TC", sans-serif;
+        background: var(--bg);
+        color: #111;
+      }
+      .app {
+        display: flex;
+        min-height: 100vh;
+      }
+      .sidebar {
+        width: var(--sidebar-w);
+        background: linear-gradient(180, #fff, #f2f4f8);
+        border-right: 1px solid #e6e9ef;
+        padding: 20px;
+      }
+      .profile {
+        padding: 12px;
+        background: transparent;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+      .profile .role {
+        font-weight: 600;
+        color: var(--brand);
+      }
+      .profile .userid {
+        margin-top: 6px;
+        color: #333;
+        font-size: 14px;
+      }
+      .profile .edit {
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .menu ul {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0;
+      }
+      .menu li {
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: #333;
+        margin-bottom: 6px;
+      }
+      .menu li.active {
+        background: #eef6ff;
+        color: var(--brand);
+        font-weight: 600;
+      }
+
+      .main {
+        flex: 1;
+        padding: 28px;
+      }
+      .main-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .main-header h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+      }
+      .tab {
+        padding: 8px 14px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: #eee;
+        cursor: pointer;
+      }
+      .tab.active {
+        background: var(--brand);
+        color: #fff;
+        border-color: rgba(0, 0, 0, 0.05);
+      }
+
+      .content {
+        background: transparent;
+      }
+      .empty-state {
+        background: var(--card);
+        padding: 48px;
+        border-radius: 10px;
+        text-align: center;
+        color: var(--muted);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      }
+      .empty-state .empty-text {
+        font-size: 18px;
+        margin: 18px 0;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .hidden {
+        display: none;
+      }
+
+      .case-list {
+        display: grid;
+        gap: 12px;
+      }
+      .case-item {
+        background: var(--card);
+        padding: 14px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid #eef2f6;
+      }
+      .case-meta {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      /* 動作欄置中，原本按鈕區域位置 */
+      .actions-column {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        justify-content: center; /* 垂直置中 */
+        align-items: center;
+        min-width: 140px;
+      }
+
+      /* 回復業主按鈕（黃色） */
+      .btn-reply {
+        background: linear-gradient(180deg, var(--reply-yellow), #ffc107);
+        color: #3b2e00;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      }
+      .btn-reply:hover {
+        filter: brightness(0.98);
+      }
+      .status-wait {
+        background: #f0f4f8;
+        color: #555;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #e1e6ee;
+        font-weight: 600;
+      }
+
+      /* modal 共用 */
+      /* 遮罩層：確保它能蓋住全螢幕並置中內容 */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999 !important;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6); /* 變灰的效果 */
+
+        /* 核心：讓內部的 modal-content 置中 */
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+      /* 彈窗主體：確保它有白色背景和足夠大小 */
+      .modal-content {
+        background-color: #fff;
+        width: 90%;
+        max-width: 900px; /* 您設定的寬度 */
+        height: 80vh; /* 設定高度，避免縮成一條線 */
+        border-radius: 12px;
+        display: flex; /* 內部佈局 */
+        flex-direction: column;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        overflow: hidden; /* 防止內容溢出 */
+        position: relative;
+      }
+      .modal.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .close-btn {
+        position: absolute;
+        top: 0.6rem;
+        right: 0.6rem;
+        font-size: 1.4rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      label {
+        display: block;
+        margin: 10px 0 6px;
+        font-size: 14px;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #d7dbe0;
+        border-radius: 6px;
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .form-row {
+        display: flex;
+        gap: 12px;
+      }
+      .col {
+        flex: 1;
+      }
+      .file-list {
+        margin-top: 8px;
+        font-size: 0.95rem;
+        color: #555;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .file-item {
+        display: inline-block;
+        width: 120px;
+        padding: 6px;
+        border: 1px solid #e6e9ef;
+        border-radius: 6px;
+        background: #fff;
+        text-align: center;
+        font-size: 12px;
+        color: #333;
+      }
+      .file-item img {
+        display: block;
+        max-width: 100%;
+        max-height: 80px;
+        object-fit: cover;
+        margin-bottom: 6px;
+        border-radius: 4px;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+
+      /* 保留原有 contract list 樣式 */
+      #contractList button.active {
+        background-color: #2e7d32 !important;
+        color: #fff !important;
+        border: 1px solid rgba(0, 0, 0, 0.06) !important;
+        box-shadow: 0 2px 6px rgba(46, 125, 50, 0.18);
+      }
+      #contractList button {
+        background: #fff;
+        color: #333;
+        border: 1px solid #ddd;
+        padding: 8px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .menu li a {
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        background: none;
+        padding: 0;
+        border: none;
+        display: inline-block;
+      }
+      /* --- 新增：待解決事項與聊天視窗樣式 --- */
+      /* 讓新的彈窗層級比原本的高，確保蓋在上面 */
+      #issuesModal {
+        z-index: 2000;
+      }
+
+      .chat-layout {
+        display: flex;
+        height: 60vh;
+        border: 1px solid #e6e9ef;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+
+      /* 左側：待解決事項 */
+      .chat-sidebar {
+        width: 280px;
+        background: #f7f8fb;
+        border-right: 1px solid #e6e9ef;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-header {
+        padding: 15px;
+        border-bottom: 1px solid #e6e9ef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #fff;
+      }
+
+      .sidebar-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #333;
+      }
+
+      /* 圓形無文字加號按鈕 */
+      .add-issue-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        font-size: 20px;
+        line-height: 28px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+      .add-issue-btn:hover {
+        background: #3367d6;
+      }
+
+      .issue-list-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+      }
+
+      .issue-item {
+        background: #fff;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        border: 1px solid #e6e9ef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+      }
+
+      .issue-done-btn {
+        background: #fff;
+        border: 1px solid #4caf50;
+        color: #4caf50;
+        border-radius: 4px;
+        font-size: 12px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      .issue-done-btn:hover {
+        background: #4caf50;
+        color: #fff;
+      }
+
+      /* 右側：聊天介面 */
+      .chat-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+      }
+
+      .chat-history {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #fafafa;
+      }
+
+      .chat-message {
+        margin-bottom: 15px;
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+      }
+
+      .msg-left {
+        background: #fff;
+        border: 1px solid #e6e9ef;
+        align-self: flex-start;
+        margin-right: auto;
+        border-bottom-left-radius: 2px;
+      }
+
+      .msg-right {
+        background: #eef6ff;
+        color: #1a73e8;
+        align-self: flex-end;
+        margin-left: auto;
+        border-bottom-right-radius: 2px;
+        float: right;
+        clear: both;
+      }
+
+      .chat-input-area {
+        padding: 10px;
+        border-top: 1px solid #e6e9ef;
+        gap: 10px;
+        background: #fff;
+      }
+
+      .chat-input-area input {
+        flex: 1;
+        border: 1px solid #d7dbe0;
+        border-radius: 20px;
+        padding: 8px 16px;
+        outline: none;
+      }
+      /* 新增：未選擇事項時的提示樣式 */
+      .chat-prompt {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #999;
+        background: #fff;
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="profile">
+          <div class="role">承包者</div>
+          <div class="userid">ID:未登入</div>
+          <a class="edit" href="#">編輯個人資料</a>
+        </div>
+        <nav class="menu">
+          <ul>
+            <li class="active" data-page="cases">案件管理</li>
+            <li><a href="main.html">🏠 首頁</a></li>
+            <li><a href="tasklist.html">📋 任務列表</a></li>
+            <li><a href="boss.html">👤 發出案件管理</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="main-header">
+          <h1>案件管理（承包者視角）</h1>
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-status="published">刊登中</button>
+            <button class="tab" data-status="completed">已成交</button>
+            <button class="tab" data-status="review">審核中</button>
+            <button class="tab" data-status="rejected">未通過</button>
+          </div>
+        </header>
+
+        <section class="content">
+          <div id="case-area">
+            <div class="empty-state hidden" id="empty">
+              <div class="illustration" aria-hidden="true"></div>
+              <p class="empty-text">目前沒有可顯示的案件</p>
+            </div>
+
+            <div id="list" class="case-list"></div>
+
+            <div style="text-align: center; margin-top: 24px"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Contract modal（保留） -->
+    <div id="contractModal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <button class="close-btn" id="closeContractModal">&times;</button>
+        <h3>接案管理</h3>
+        <div id="contractList" style="margin: 12px 0"></div>
+        <div style="text-align: right">
+          <button id="assignConfirmBtn" class="primary">✅ 確定指派</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增：回復業主 modal -->
+    <div id="replyModal" class="modal" aria-hidden="true">
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="replyTitle"
+      >
+        <button class="close-btn" id="closeReplyModal">&times;</button>
+        <h3 id="replyTitle">回復業主</h3>
+
+        <!-- 回復業主 modal 內的表單片段（已移除預計天數） -->
+        <form id="replyForm" enctype="multipart/form-data">
+          <input type="hidden" name="task_id" id="reply_task_id" value="" />
+          <div class="task-field">
+            <label for="reply_price">報價</label>
+            <input
+              id="reply_price"
+              name="price"
+              type="text"
+              placeholder="輸入報價（例如 NT$2000 或 面議）"
+              required
+            />
+          </div>
+
+          <div class="task-field">
+            <label for="reply_message">訊息</label>
+            <textarea
+              id="reply_message"
+              name="message"
+              placeholder="要告訴業主的內容..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="task-field">
+            <label for="reply_files">附加檔案（圖片、PDF，可多選）</label>
+            <input
+              id="reply_files"
+              name="reply_files[]"
+              type="file"
+              multiple
+              accept="image/*,application/pdf"
+            />
+            <div id="replyFileList" class="file-list"></div>
+          </div>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              id="cancelReply"
+              class="primary"
+              style="background: #eee; color: #333; border: 1px solid #ddd"
+            >
+              取消
+            </button>
+            <button type="submit" id="submitReply" class="primary">提交</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="issuesModal" class="modal" aria-hidden="true">
+      <div
+        class="modal-content"
+        style="max-width: 900px; padding: 0; overflow: hidden; height: 80vh"
+      >
+        <button
+          class="close-btn"
+          id="closeIssuesModal"
+          style="z-index: 10; top: 10px; right: 10px"
+        >
+          &times;
+        </button>
+
+        <div style="padding: 15px 20px; border-bottom: 1px solid #eee">
+          <h3 style="margin: 0">案件協作與溝通</h3>
+        </div>
+
+        <div class="chat-layout">
+          <div class="chat-sidebar">
+            <div class="sidebar-header">
+              <h4>待解決事項列表</h4>
+            </div>
+            <div id="issueListContainer" class="issue-list-container"></div>
+          </div>
+
+          <div class="chat-main">
+            <div id="chatHistory" class="chat-history"></div>
+
+            <div id="chatInputArea" class="chat-input-area">
+              <input type="text" id="chatInput" placeholder="輸入訊息..." />
+              <button
+                id="chatSendBtn"
+                class="primary"
+                style="padding: 6px 16px"
+              >
+                送出
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // session 取得與 UI 更新（維持原邏輯）
+      fetch("backend/get_session_user.php", { credentials: "same-origin" })
+        .then((res) => {
+          if (!res.ok) throw new Error("無法取得 session");
+          return res.json();
+        })
+        .then((data) => {
+          window.currentUserId = String(data.user_id || "");
+          const roleEl = document.querySelector(".profile .role");
+          const idEl = document.querySelector(".profile .userid");
+          if (roleEl) roleEl.textContent = data.username || "承包者";
+          if (idEl)
+            idEl.textContent = data.user_id
+              ? `ID:${data.user_id}`
+              : "ID:未登入";
+          fetchAndRenderTasks();
+        })
+        .catch((err) => {
+          console.warn("取得 session 使用者失敗", err);
+          window.currentUserId = "";
+          fetchAndRenderTasks();
+        });
+
+      const GET_TASKS_URL = "backend/get_cases.php";
+      const REPLY_URL = "backend/reply_owner.php"; // 新增後端接收路徑
+      const DELETE_TASK_URL = "backend/delete_task.php";
+
+      async function fetchAndRenderTasks() {
+        try {
+          const resp = await fetch(GET_TASKS_URL);
+          if (!resp.ok) {
+            const text = await resp.text();
+            console.error("取得任務列表失敗", resp.status, text);
+            alert("無法取得任務列表，請稍後再試");
+            return;
+          }
+          const data = await resp.json();
+          if (!Array.isArray(data)) {
+            console.warn("後端回傳格式錯誤，預期為陣列", data);
+            alert("資料格式錯誤，請聯絡管理員");
+            return;
+          }
+          window.allTasks = data;
+          renderTaskList(data);
+        } catch (err) {
+          console.error("fetch tasks error", err);
+          alert("網路錯誤，無法載入任務列表");
+        }
+      }
+
+      async function deleteTask(id) {
+        if (!confirm("確定要刪除這筆案件嗎？")) return;
+        try {
+          const resp = await fetch(DELETE_TASK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `id=${encodeURIComponent(id)}`,
+          });
+          const result = await resp.json();
+          if (result.success) await fetchAndRenderTasks();
+          else alert("刪除失敗：" + (result.message || "未知錯誤"));
+        } catch (err) {
+          console.error("刪除錯誤", err);
+          alert("網路錯誤，請稍後再試");
+        }
+      }
+
+      // manageContract / contract modal (保留原有)
+      let selectedContractor = null;
+      let currentTaskIdForAssign = null;
+      function manageContract(taskId) {
+        currentTaskIdForAssign = taskId;
+        fetch("backend/get_intents.php?task_id=" + taskId)
+          .then((res) => res.json())
+          .then((data) => {
+            if (!Array.isArray(data) || data.length === 0) {
+              alert("目前尚無人提出接案意願");
+              return;
+            }
+            const listEl = document.getElementById("contractList");
+            listEl.innerHTML = "";
+            data.forEach((user) => {
+              const btn = document.createElement("button");
+              btn.textContent = user.username;
+              btn.className = "primary";
+              btn.style.margin = "6px";
+              btn.onclick = () => {
+                selectedContractor = user.username;
+                [...listEl.children].forEach((b) =>
+                  b.classList.remove("active")
+                );
+                btn.classList.add("active");
+              };
+              listEl.appendChild(btn);
+            });
+            showContractModal();
+          })
+          .catch((err) => {
+            console.error("取得接案人失敗", err);
+            alert("無法取得接案人資料");
+          });
+      }
+      window.manageContract = manageContract;
+      function showContractModal() {
+        const modal = document.getElementById("contractModal");
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+      function hideContractModal() {
+        const modal = document.getElementById("contractModal");
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        selectedContractor = null;
+      }
+      document
+        .getElementById("assignConfirmBtn")
+        ?.addEventListener("click", () => {
+          if (!selectedContractor || !currentTaskIdForAssign) {
+            alert("請先選擇接案人");
+            return;
+          }
+          fetch("backend/assign_contractor.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `task_id=${encodeURIComponent(
+              currentTaskIdForAssign
+            )}&contractor=${encodeURIComponent(selectedContractor)}`,
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                alert("✅ 已成功指派接案人");
+                hideContractModal();
+                fetchAndRenderTasks();
+              } else alert("❌ 指派失敗：" + (data.message || "未知錯誤"));
+            })
+            .catch((err) => {
+              console.error("指派錯誤", err);
+              alert("⚠️ 網路錯誤，請稍後再試");
+            });
+        });
+      document
+        .getElementById("closeContractModal")
+        ?.addEventListener("click", hideContractModal);
+
+      // renderTaskList：顯示屬於承包者（contractor_id = session）的案件，並把動作欄改為單一回復按鈕
+      function renderTaskList(items) {
+        const listEl = document.getElementById("list");
+        const emptyState = document.getElementById("empty");
+        listEl.innerHTML = "";
+
+        const currentUserId = String(window.currentUserId || "");
+        const filtered = items.filter((it) => {
+          const contractorId = it.contractor_id ?? it.contractor ?? "";
+          return String(contractorId) === currentUserId && currentUserId !== "";
+        });
+
+        if (!filtered || filtered.length === 0) {
+          emptyState.classList.remove("hidden");
+          return;
+        }
+        emptyState.classList.add("hidden");
+
+        const BASE_UPLOAD_PREFIX = "/web/backend/uploads/";
+
+        filtered.forEach((it) => {
+          const item = document.createElement("div");
+          item.className = "case-item";
+
+          const avatar = it.avatar || "👤";
+          const username = it.username || it.title || "匿名使用者";
+          const published_at = it.published_at
+            ? new Date(it.published_at).toLocaleString()
+            : it.created_at
+            ? new Date(it.created_at).toLocaleString()
+            : "";
+          const region = it.region || "不限";
+
+          let attachments = [];
+          try {
+            if (
+              typeof it.attachments === "string" &&
+              it.attachments.trim() !== ""
+            )
+              attachments = JSON.parse(it.attachments);
+            else if (Array.isArray(it.attachments))
+              attachments = it.attachments;
+          } catch (err) {
+            console.warn("附件解析失敗", err, it.attachments);
+            attachments = [];
+          }
+
+          const normalizeUrl = (a) => {
+            if (!a) return null;
+            if (a.url && typeof a.url === "string" && a.url.trim() !== "")
+              return a.url;
+            let p = a.path || a.file_name || a.filename || a.orig_name || "";
+            if (!p) return null;
+            p = p.replace(/\\/g, "/").trim();
+            if (p.startsWith("/")) p = p.replace(/^\/+/, "");
+            if (p.startsWith("uploads/")) {
+              return (
+                BASE_UPLOAD_PREFIX.replace(/\/$/, "") +
+                "/" +
+                p.replace(/^uploads\//, "")
+              );
+            }
+            return BASE_UPLOAD_PREFIX.replace(/\/$/, "") + "/" + p;
+          };
+
+          const imagePreview = attachments
+            .map((a) => {
+              const mime = a && (a.mime || a.type || "");
+              const src = normalizeUrl(a);
+              const name =
+                a && (a.filename || a.orig_name || a.file_name || "");
+              if (!src) return null;
+              if (mime && typeof mime === "string") {
+                if (!mime.startsWith("image/")) return null;
+              }
+              return `<img src="${escapeHtml(src)}" alt="${escapeHtml(
+                name
+              )}" style="max-width:100px;max-height:80px;border-radius:6px;margin-top:8px;" />`;
+            })
+            .filter(Boolean)
+            .join("");
+          // 判斷是否已回覆（資料庫欄位: is_reply，可為 boolean / 0/1 / '1' / 'true'）
+          const replied =
+            it.is_reply === true ||
+            it.is_reply === 1 ||
+            String(it.is_reply).toLowerCase() === "1" ||
+            String(it.is_reply).toLowerCase() === "true";
+          let actionsHtml = "";
+          // 新按鈕的 HTML，注意新增的 style 以確保它與其他按鈕分行排列
+          const issueBtnHtml = `<button class="primary" style="background:#009688; margin-top:8px;" onclick="openIssuesModal(${it.id})">待解決事項管理</button>`;
+
+          if (replied) {
+            // 案件已回復
+            actionsHtml = `
+        <div class="status-wait">等待業主回復</div>
+        ${issueBtnHtml}
+    `;
+          } else {
+            // 案件尚未回復
+            actionsHtml = `
+        <button class="btn-reply" onclick="openReplyModal(${encodeURIComponent(
+          it.id
+        )})">回復業主</button>
+        ${issueBtnHtml}
+    `;
+          }
+
+          // 確保 item.innerHTML 部分不需要修改，它應該長這樣：
+          item.innerHTML = `
+    <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="font-size:20px;line-height:1">${avatar}</div>
+        <div style="flex:1">
+            <div><strong>${escapeHtml(username)}</strong></div>
+            <div class="case-meta">承包者 ID: ${escapeHtml(
+              it.contractor_id ?? it.contractor ?? ""
+            )}</div>
+            <div class="case-meta">預算: NT$${escapeHtml(it.budget)}</div>
+            <div class="case-meta">地區: ${escapeHtml(region)}</div>
+            <div class="case-meta">發佈: ${escapeHtml(published_at)}</div>
+            ${
+              imagePreview
+                ? `<div class="case-meta">附圖：<br />${imagePreview}</div>`
+                : ""
+            }
+        </div>
+    </div>
+    <div class="actions-column">
+        ${actionsHtml}
+    </div>
+`;
+          listEl.appendChild(item);
+        });
+      }
+
+      // reply modal 行為
+      const replyModal = document.getElementById("replyModal");
+      const replyForm = document.getElementById("replyForm");
+      const replyFiles = document.getElementById("reply_files");
+      const replyFileList = document.getElementById("replyFileList");
+      const replyTaskIdInput = document.getElementById("reply_task_id");
+      const closeReplyModalBtn = document.getElementById("closeReplyModal");
+      const cancelReplyBtn = document.getElementById("cancelReply");
+
+      function openReplyModal(taskId) {
+        replyTaskIdInput.value = taskId;
+        showReplyModal();
+      }
+      function showReplyModal() {
+        replyModal.classList.add("show");
+        replyModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        // focus first input
+        document.getElementById("reply_price").focus();
+      }
+      function hideReplyModal() {
+        replyModal.classList.remove("show");
+        replyModal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        replyForm.reset();
+        replyFileList.innerHTML = "";
+      }
+      closeReplyModalBtn?.addEventListener("click", hideReplyModal);
+      cancelReplyBtn?.addEventListener("click", hideReplyModal);
+      replyModal.addEventListener("click", (e) => {
+        if (e.target === replyModal) hideReplyModal();
+      });
+      // 確保 DOM 載入後才執行
+      document.addEventListener("DOMContentLoaded", () => {
+        const chatInput = document.getElementById("chatInput");
+
+        // 先檢查元素是否存在，避免報錯
+        if (chatInput) {
+          chatInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter" && currentSelectedIssueId !== null) {
+              const sendBtn = document.getElementById("chatSendBtn");
+              if (sendBtn) sendBtn.click();
+            }
+          });
+        } else {
+          console.error("找不到 id='chatInput' 的元素，請檢查 HTML");
+        }
+      });
+
+      // preview reply files
+      replyFiles.addEventListener("change", (e) => {
+        replyFileList.innerHTML = "";
+        const files = Array.from(e.target.files || []);
+        files.forEach((f) => {
+          const item = document.createElement("div");
+          item.className = "file-item";
+          if (f.type.startsWith("image/")) {
+            const img = document.createElement("img");
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              img.src = ev.target.result;
+            };
+            reader.readAsDataURL(f);
+            item.appendChild(img);
+          } else {
+            const ext = f.name.split(".").pop();
+            const placeholder = document.createElement("div");
+            placeholder.style.height = "64px";
+            placeholder.style.display = "flex";
+            placeholder.style.alignItems = "center";
+            placeholder.style.justifyContent = "center";
+            placeholder.style.background = "#fafafa";
+            placeholder.textContent = ext.toUpperCase();
+            item.appendChild(placeholder);
+          }
+          const name = document.createElement("div");
+          name.className = "fname";
+          name.textContent = f.name;
+          item.appendChild(name);
+          replyFileList.appendChild(item);
+        });
+      });
+
+      // submit reply -> 將資料寫入 DB（POST 到 backend/reply_owner.php）
+      replyForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById("submitReply");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "提交中...";
+
+        try {
+          const fd = new FormData(replyForm);
+          // 帶上 session user id（若有）
+          if (window.currentUserId)
+            fd.append("responder_id", window.currentUserId);
+          // 發送到後端，後端需處理 attachments 上傳與資料庫寫入
+          const resp = await fetch(REPLY_URL, {
+            method: "POST",
+            body: fd,
+            credentials: "same-origin",
+          });
+          if (!resp.ok) {
+            const text = await resp.text();
+            console.error("回復送出失敗", resp.status, text);
+            alert("提交失敗，請稍後再試");
+            return;
+          }
+          const result = await resp.json().catch(() => ({ success: resp.ok }));
+          if (result && result.success === false) {
+            alert("提交失敗：" + (result.message || "未知錯誤"));
+            return;
+          }
+          alert("已成功提交回復");
+          hideReplyModal();
+          // 刷新列表（若需要）
+          fetchAndRenderTasks();
+        } catch (err) {
+          console.error("reply submit error", err);
+          alert("網路錯誤，請稍後再試");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "提交";
+        }
+      });
+
+      // simple XSS escape
+      function escapeHtml(str) {
+        if (!str && str !== 0) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      // init fetch when no session result
+      (function init() {
+        if (!window.currentUserId) fetchAndRenderTasks();
+      })();
+
+      // 1. 全域變數宣告
+      let allIssues = []; // 儲存從 API 抓取的所有事項
+      let currentSelectedIssueId = null; // 目前選中的事項資料庫 ID
+      let currentIssueTaskId = null; // 目前專案的 ID
+
+      const BASE_API_URL = "backend/issue.php";
+      // 定義 API 路徑 (請確保與後端一致)
+      const GET_ISSUES_URL = `${BASE_API_URL}?action=issues/list`;
+      const GET_COMMENTS_URL = `${BASE_API_URL}?action=issues/comments`;
+      const CREATE_COMMENT_URL = `${BASE_API_URL}?action=issue/comment/create`;
+
+      // 2. 當 DOM 載入完成後執行的邏輯
+      document.addEventListener("DOMContentLoaded", () => {
+        // 綁定關閉彈窗事件
+        const closeBtn = document.getElementById("closeIssuesModal");
+        if (closeBtn) {
+          closeBtn.onclick = () => {
+            const modal = document.getElementById("issuesModal");
+            if (modal) {
+              modal.style.display = "none";
+              document.body.style.overflow = ""; // 恢復捲動
+            }
+          };
+        }
+
+        // 綁定發送按鈕事件
+        const chatSendBtn = document.getElementById("chatSendBtn");
+        if (chatSendBtn) {
+          chatSendBtn.onclick = handleSendMessage;
+        }
+
+        // 綁定 Enter 鍵事件
+        const chatInput = document.getElementById("chatInput");
+        if (chatInput) {
+          chatInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+              handleSendMessage();
+            }
+          });
+        }
+      });
+
+      // 3. 彈窗開啟函式 (掛載到 window 確保 HTML onclick 抓得到)
+      window.openIssuesModal = async function (taskId) {
+        console.log("觸發彈窗, taskId:", taskId);
+        currentIssueTaskId = taskId;
+
+        const modal = document.getElementById("issuesModal");
+        if (modal) {
+          // 1. 強制顯示彈窗
+          modal.style.setProperty("display", "flex", "important");
+          modal.style.visibility = "visible";
+          modal.style.opacity = "1";
+
+          // 2. 讓背景不能捲動
+          document.body.style.overflow = "hidden";
+
+          // 3. 抓取資料
+          await fetchAndRenderIssues(taskId);
+
+          // 4. 初始化右側畫面
+          renderChatHistory();
+        } else {
+          alert("找不到 id='issuesModal' 的 HTML 元素！");
+        }
+      };
+
+      // 4. 抓取事項列表
+      async function fetchAndRenderIssues(taskId) {
+        try {
+          const resp = await fetch(`${GET_ISSUES_URL}&project_id=${taskId}`);
+          const data = await resp.json();
+          if (data.success) {
+            allIssues = data.issues || [];
+            renderIssueList(allIssues);
+          }
+        } catch (err) {
+          console.error("載入列表失敗:", err);
+        }
+      }
+
+      // 5. 渲染左側列表
+      function renderIssueList(issues) {
+        const container = document.getElementById("issueListContainer");
+        if (!container) return;
+
+        if (!issues || issues.length === 0) {
+          container.innerHTML = `<div style="padding:20px; color:#999; text-align:center;">暫無待解決事項</div>`;
+          return;
+        }
+
+        container.innerHTML = "";
+        issues.forEach((issue) => {
+          const div = document.createElement("div");
+          div.className = `issue-item ${
+            currentSelectedIssueId == issue.id ? "active" : ""
+          }`;
+          const statusIcon = issue.issue_is_opened == 1 ? "🔴" : "🟢";
+          div.innerHTML = `<span>${statusIcon} ${issue.title}</span>`;
+          div.onclick = () => selectIssue(issue.id);
+          container.appendChild(div);
+        });
+      }
+
+      // 6. 選擇事項
+      window.selectIssue = async function (issueId) {
+        currentSelectedIssueId = issueId;
+
+        // 更新左側列表選中樣式
+        renderIssueList(allIssues);
+
+        // 抓取留言
+        await fetchAndRenderComments(issueId);
+      };
+
+      // 7. 抓取留言內容
+      async function fetchAndRenderComments(issueId) {
+        try {
+          const resp = await fetch(`${GET_COMMENTS_URL}&issue_id=${issueId}`);
+          const data = await resp.json();
+          if (data.success) {
+            renderChatHistory(data.comments);
+          }
+        } catch (err) {
+          console.error("載入留言失敗:", err);
+        }
+      }
+
+      // 8. 渲染對話區域
+      function renderChatHistory(comments = []) {
+        const historyContainer = document.getElementById("chatHistory");
+        const inputArea = document.getElementById("chatInputArea");
+        if (!historyContainer) return;
+
+        historyContainer.innerHTML = "";
+
+        if (currentSelectedIssueId === null) {
+          historyContainer.innerHTML = `<div class="chat-prompt">請從左側列表選擇事項以查看討論。</div>`;
+          if (inputArea) inputArea.style.display = "none";
+          return;
+        }
+
+        // 💡 關鍵：根據 allIssues 中的狀態決定是否顯示輸入框
+        const currentIssue = allIssues.find(
+          (i) => i.id == currentSelectedIssueId
+        );
+        if (inputArea) {
+          const isOpen =
+            currentIssue &&
+            (currentIssue.issue_is_opened == 1 ||
+              currentIssue.issue_is_opened == true);
+          inputArea.style.display = isOpen ? "flex" : "none";
+        }
+
+        // 渲染訊息泡泡
+        if (comments.length === 0) {
+          historyContainer.innerHTML = `<div style="text-align:center; color:#999; margin:20px;">尚無討論紀錄。</div>`;
+        } else {
+          comments.forEach((c) => {
+            const isMe = String(c.user_id) === String(window.currentUserId);
+            const msgDiv = document.createElement("div");
+            msgDiv.className = `chat-message ${
+              isMe ? "msg-right" : "msg-left"
+            }`;
+            msgDiv.textContent = c.content;
+            historyContainer.appendChild(msgDiv);
+          });
+        }
+
+        historyContainer.scrollTop = historyContainer.scrollHeight;
+      }
+
+      // 9. 發送留言處理 (承包者專用：移除結案功能)
+      async function handleSendMessage() {
+        const input = document.getElementById("chatInput");
+        if (!input) return;
+
+        const content = input.value.trim();
+        if (!currentSelectedIssueId || !content) return;
+
+        // 承包者不判斷「結束issue」，直接當一般訊息發送
+        const form = new FormData();
+        form.append("issue_id", currentSelectedIssueId);
+        form.append("content", content);
+
+        try {
+          const resp = await fetch(CREATE_COMMENT_URL, {
+            method: "POST",
+            body: form,
+          });
+          const data = await resp.json();
+          if (data.success) {
+            input.value = "";
+            await fetchAndRenderComments(currentSelectedIssueId);
+          } else {
+            alert("發送失敗：" + data.message);
+          }
+        } catch (err) {
+          console.error("發送出錯:", err);
+        }
+      }
+    </script>
+  </body>
+</html>

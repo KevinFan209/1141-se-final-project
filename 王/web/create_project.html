@@ -1,0 +1,22 @@
+<form id="projectForm">
+  <input type="text" name="title" placeholder="專案標題" required />
+  <textarea name="description" placeholder="專案需求說明" required></textarea>
+  <button type="submit">建立專案</button>
+</form>
+
+<script>
+document.getElementById('projectForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+
+  const res = await fetch('create_project.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  const result = await res.json();
+  alert(result.message);
+});
+</script>

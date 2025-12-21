@@ -1,0 +1,23 @@
+<form id="bidForm">
+  <input type="number" name="price" placeholder="報價金額" required />
+  <textarea name="message" placeholder="留言（選填）"></textarea>
+  <input type="hidden" name="project_id" value="123" /> <!-- 專案 ID -->
+  <button type="submit">送出報價</button>
+</form>
+
+<script>
+document.getElementById('bidForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+
+  const res = await fetch('bid.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  const result = await res.json();
+  alert(result.message);
+});
+</script>

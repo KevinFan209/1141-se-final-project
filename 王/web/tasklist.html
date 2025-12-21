@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>出任務 — 任務列表</title>
+    <style>
+      :root {
+        --bg: #f7f8fb;
+        --card: #fff;
+        --brand: #e53935;
+        --accent: #4285f4;
+        --muted: #666;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Noto Sans TC", sans-serif;
+        background: var(--bg);
+        color: #111;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .topbar {
+        background: #fff;
+        border-bottom: 1px solid #e6e9ef;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      }
+      .topbar .container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        height: 64px;
+      }
+      .brand {
+        font-weight: 800;
+        color: var(--brand);
+        font-size: 20px;
+      }
+      .user-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .primary {
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
+        padding-top: 18px;
+      }
+      .left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .filters {
+        background: var(--card);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+      }
+      .filter-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .filter-row select {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+      }
+
+      .task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .task {
+        background: var(--card);
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .task-left {
+        flex: 1;
+      }
+      .task .title {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+      .meta-row {
+        color: var(--muted);
+        font-size: 13px;
+        display: flex;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .desc {
+        color: #333;
+        line-height: 1.4;
+      }
+
+      .task-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* 垂直置中 */
+        gap: 8px;
+        margin-left: 12px;
+      }
+      .task-actions .apply {
+        background: #ff8a65;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+      }
+      .task-actions .fav {
+        background: transparent;
+        border: 1px solid #eee;
+        padding: 6px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .tips-card {
+        background: #fff;
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #ffdce0;
+      }
+      .tips-card h3 {
+        margin: 0 0 8px 0;
+        color: #b71c1c;
+      }
+      .tips-card ol {
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .learn-more {
+        display: inline-block;
+        margin-top: 10px;
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .stats-card {
+        background: #fff;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+      }
+      .small {
+        background: #f0f4ff;
+        border: 1px solid #dfe8ff;
+        padding: 8px 10px;
+        border-radius: 6px;
+        margin-right: 8px;
+        cursor: pointer;
+      }
+      /* Modal 背景遮罩 */
+      .modal {
+        display: none; /* 初始隱藏 */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        overflow: auto;
+      }
+
+      /* 顯示時加上動畫 class */
+      .modal.show {
+        display: flex;
+      }
+
+      /* Modal 內容容器：動畫初始狀態 */
+      .modal-content {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        position: relative;
+        transform: translateY(50px);
+        opacity: 0;
+        transition: transform 0.4s ease, opacity 0.4s ease;
+      }
+
+      /* 顯示動畫：由下往上淡入 */
+      .modal.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      /* 關閉動畫：由上往下淡出 */
+      .modal.hide .modal-content {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+
+      /* 關閉按鈕 */
+      .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+
+      /* 彈出內容排版 */
+      .task-field {
+        margin-bottom: 1.5rem;
+        font-size: 15px;
+        color: #333;
+      }
+      .task-field strong {
+        color: var(--brand);
+      }
+      .file-list {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: #555;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .file-item {
+        display: inline-block;
+        width: 120px;
+        padding: 6px;
+        border: 1px solid #e6e9ef;
+        border-radius: 6px;
+        background: #fff;
+        text-align: center;
+        font-size: 12px;
+        color: #333;
+      }
+      .file-item img {
+        display: block;
+        max-width: 100%;
+        max-height: 80px;
+        object-fit: cover;
+        margin-bottom: 6px;
+        border-radius: 4px;
+      }
+      .file-item .fname {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* 按鈕狀態 */
+      #confirmApplyBtn.active {
+        background: #2e7d32; /* 綠色 */
+        color: #fff;
+      }
+      #confirmApplyBtn.inactive {
+        background: #cfcfcf; /* 灰色 */
+        color: #666;
+      }
+      #confirmApplyBtn.loading {
+        opacity: 0.9;
+      }
+      .fixed-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border-bottom: 1px solid #ddd;
+        z-index: 999;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      .header-container {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+      }
+
+      .menu-btn {
+        font-size: 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        margin-right: 12px;
+      }
+
+      .brand {
+        font-weight: bold;
+        font-size: 18px;
+        color: #e53935;
+      }
+
+      .menu-list {
+        display: none;
+        flex-direction: column;
+        background: #f9f9f9;
+        border-top: 1px solid #eee;
+        padding: 10px 16px;
+      }
+
+      .menu-list.show {
+        display: flex;
+      }
+
+      .menu-list a {
+        text-decoration: none;
+        color: #333;
+        padding: 8px 0;
+        font-size: 16px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .menu-list a:hover {
+        color: #e53935;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="fixed-header">
+      <div class="header-container">
+        <button id="menuToggle" class="menu-btn">☰</button>
+        <div class="brand">出任務平台</div>
+      </div>
+      <nav id="menuList" class="menu-list">
+        <a href="main.html">🏠 首頁</a>
+        <a href="boss.html">👤 發出案件管理</a>
+        <a href="tasker.html">⚙️ 承接任務管理</a>
+      </nav>
+    </header>
+    <header class="topbar">
+      <div class="container">
+        <div class="brand">出任務</div>
+
+        <div class="user-actions">
+          <div class="userid">T6205618</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout">
+      <section class="left-col">
+        <div class="filters">
+          <div class="meta">
+            <span id="total">共 0 筆任務</span>
+          </div>
+          <div class="filter-row">
+            <select id="location">
+              <option>全部地區</option>
+            </select>
+            <div style="display: flex; gap: 6px">
+              <input
+                id="priceMin"
+                type="number"
+                placeholder="最低金額"
+                style="width: 100px"
+              />
+              <input
+                id="priceMax"
+                type="number"
+                placeholder="最高金額"
+                style="width: 100px"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div id="taskList" class="task-list">
+          <!-- 任務項目由 JS 渲染 -->
+        </div>
+      </section>
+
+      <aside class="right-col">
+        <div class="tips-card">
+          <h3>任務指南 / Tips</h3>
+          <ol>
+            <li>工作內容是否清晰</li>
+            <li>工作時間是否合理</li>
+            <li>是否有額外要求（如個資、OTP）</li>
+          </ol>
+        </div>
+      </aside>
+    </main>
+
+    <template id="taskTpl">
+      <article class="task">
+        <div class="task-left">
+          <div class="title"></div>
+          <div class="meta-row">
+            <span class="reward"></span>
+            <span class="deadline"></span>
+            <span class="region"></span>
+          </div>
+          <p class="desc"></p>
+        </div>
+        <div class="task-actions">
+          <button class="apply">提出承包意願</button>
+        </div>
+      </article>
+    </template>
+
+    <div id="newTaskModal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <button class="close-btn" id="closeNewTask">&times;</button>
+        <h2>案件詳情</h2>
+        <div class="task-field">
+          <strong>標題：</strong> <span id="taskTitle"></span>
+        </div>
+        <div class="task-field">
+          <strong>預算：</strong> <span id="taskBudget"></span>
+        </div>
+        <div class="task-field">
+          <strong>地區：</strong> <span id="taskRegion"></span>
+        </div>
+        <div class="task-field">
+          <strong>截止日：</strong> <span id="taskClose"></span>
+        </div>
+        <div class="task-field">
+          <strong>說明：</strong>
+          <p id="taskMeta"></p>
+        </div>
+        <div class="task-field">
+          <strong>附加檔案：</strong>
+          <div id="taskFiles" class="file-list">—</div>
+        </div>
+        <div class="task-field" style="text-align: right">
+          <button id="confirmApplyBtn" class="primary">✅ 提出承包意願</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const menuToggle = document.getElementById("menuToggle");
+        const menuList = document.getElementById("menuList");
+
+        menuToggle.addEventListener("click", () => {
+          menuList.classList.toggle("show");
+        });
+        document.addEventListener("click", (e) => {
+          const menuList = document.getElementById("menuList");
+          const menuToggle = document.getElementById("menuToggle");
+
+          // 如果導覽列是展開狀態，且點擊的不是導覽列或按鈕本身
+          if (
+            menuList.classList.contains("show") &&
+            !menuList.contains(e.target) &&
+            !menuToggle.contains(e.target)
+          ) {
+            menuList.classList.remove("show");
+          }
+        });
+
+        const taskListEl = document.getElementById("taskList");
+        const tpl = document.getElementById("taskTpl");
+        const totalEl = document.getElementById("total");
+        const locationSelect = document.getElementById("location");
+        const priceMin = document.getElementById("priceMin");
+        const priceMax = document.getElementById("priceMax");
+        const modal = document.getElementById("newTaskModal");
+        const closeBtn = document.getElementById("closeNewTask");
+
+        const confirmApplyBtn = document.getElementById("confirmApplyBtn");
+
+        confirmApplyBtn.addEventListener("click", async () => {
+          // 若按鈕為 inactive（表示已提出），但還是允許送出以切換（或你可阻止）
+          if (confirmApplyBtn.disabled) return;
+
+          const taskId = modal.dataset.taskId;
+          // loading 樣式與鎖定按鈟，避免重複點擊
+          confirmApplyBtn.disabled = true;
+          confirmApplyBtn.classList.add("loading");
+
+          try {
+            const resp = await fetch("backend/apply_intent.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: `task_id=${encodeURIComponent(taskId)}`,
+              credentials: "same-origin",
+            });
+
+            const result = await resp.json();
+
+            confirmApplyBtn.classList.remove("loading");
+            confirmApplyBtn.disabled = false;
+
+            if (result.success) {
+              if (result.action === "added") {
+                // 變成已提出（灰色）
+                confirmApplyBtn.classList.remove("active");
+                confirmApplyBtn.classList.add("inactive");
+                confirmApplyBtn.textContent = "❌ 已提出（取消）";
+              } else if (result.action === "removed") {
+                // 尚未提出（綠色）
+                confirmApplyBtn.classList.remove("inactive");
+                confirmApplyBtn.classList.add("active");
+                confirmApplyBtn.textContent = "✅ 提出承包意願";
+              }
+            } else {
+              alert("❌ 操作失敗：" + (result.message || "未知錯誤"));
+            }
+          } catch (err) {
+            confirmApplyBtn.classList.remove("loading");
+            confirmApplyBtn.disabled = false;
+            console.error("意願切換錯誤", err);
+            alert("⚠️ 網路錯誤，請稍後再試");
+          }
+        });
+
+        function hideTaskInfo() {
+          modal.classList.remove("show");
+          modal.setAttribute("aria-hidden", "true");
+          document.body.style.overflow = "";
+        }
+
+        function showTaskInfo(task) {
+          modal.dataset.taskId = task.id;
+          // 顯示 modal
+          modal.classList.add("show");
+          modal.setAttribute("aria-hidden", "false");
+          document.body.style.overflow = "hidden";
+
+          document.getElementById("taskTitle").textContent = task.title || "";
+          document.getElementById("taskBudget").textContent = task.reward || "";
+          document.getElementById("taskRegion").textContent = task.region || "";
+          document.getElementById("taskMeta").textContent = task.desc || "";
+          document.getElementById("taskClose").textContent =
+            formatTaiwanDatetime(task.deadline);
+
+          const filesEl = document.getElementById("taskFiles");
+          filesEl.innerHTML = "";
+
+          console.log("showTaskInfo called, task:", task);
+
+          // 初始化按鈕
+          confirmApplyBtn.classList.remove("inactive", "active", "loading");
+          confirmApplyBtn.disabled = true;
+          confirmApplyBtn.textContent = "載入中...";
+          confirmApplyBtn.classList.add("loading");
+
+          // 查詢後端是否已提出
+          fetch(`backend/check_intent.php?task_id=${task.id}`, {
+            credentials: "same-origin",
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              confirmApplyBtn.classList.remove("loading");
+              confirmApplyBtn.disabled = false;
+              if (data.hasIntent) {
+                // 已提出：灰色 + 顯示取消
+                confirmApplyBtn.classList.add("inactive");
+                confirmApplyBtn.textContent = "❌ 已提出（取消）";
+              } else {
+                // 尚未提出：綠色 + 顯示提出
+                confirmApplyBtn.classList.add("active");
+                confirmApplyBtn.textContent = "✅ 提出承包意願";
+              }
+            })
+            .catch(() => {
+              // 出錯時允許嘗試（保守處理）
+              confirmApplyBtn.classList.remove("loading");
+              confirmApplyBtn.disabled = false;
+              confirmApplyBtn.classList.add("active");
+              confirmApplyBtn.textContent = "✅ 提出承包意願";
+            });
+
+          // 解析 attachments
+          let attachments = [];
+          try {
+            if (typeof task.attachments === "string") {
+              attachments = task.attachments.trim()
+                ? JSON.parse(task.attachments)
+                : [];
+            } else if (Array.isArray(task.attachments)) {
+              attachments = task.attachments;
+            } else {
+              attachments = [];
+            }
+          } catch (err) {
+            console.warn("附件解析失敗", err, task.attachments);
+            attachments = [];
+          }
+          console.log("parsed attachments:", attachments);
+
+          if (!attachments || attachments.length === 0) {
+            filesEl.textContent = "—";
+            return;
+          }
+
+          // helper: 不改變已為完整路徑的 url；若只有檔名或相對路徑則不強制補前綴（避免重複）
+          const normalize = (f) => {
+            let url = f.url || f.path || f.file_name || f.filename || "";
+            if (!url) return null;
+            url = String(url).replace(/\\/g, "/").trim();
+
+            // 如果已經是完整絕對路徑（從根目錄開始），直接回傳
+            if (url.startsWith("/")) return url;
+
+            // 若是看起來像已含 uploads 片段（但缺開頭斜線），補一個斜線
+            if (url.match(/^web\/|^backend\/|^uploads\//i)) {
+              return "/" + url.replace(/^\/+/, "");
+            }
+
+            // 最後保守處理：當作放在 uploads 下的檔名（若你的環境不是這個，請改成合適的前綴）
+            return "/web/backend/uploads/" + url.replace(/^\/+/, "");
+          };
+
+          attachments.forEach((f, idx) => {
+            const item = document.createElement("div");
+            item.className = "file-item";
+
+            const name = f.orig_name || f.filename || f.file_name || "檔案";
+            const url = normalize(f);
+            console.log(`attachment[${idx}] raw:`, f, "normalized:", url);
+
+            const isImage =
+              (f.mime && String(f.mime).toLowerCase().startsWith("image/")) ||
+              (url && url.match(/\.(png|jpe?g|gif|bmp|webp|svg)$/i));
+
+            if (isImage && url) {
+              const img = document.createElement("img");
+              img.alt = name;
+              img.src = url;
+              // 再次確認圖片載入結果
+              img.addEventListener("error", (e) => {
+                console.warn("image load error for", url, e);
+                // 若載入失敗，可顯示替代文字或下載連結
+                item.innerHTML = `<div style="color:#a00;font-size:12px">圖片載入失敗</div>`;
+              });
+              img.addEventListener("load", () => {
+                console.log("image loaded:", url);
+              });
+              item.appendChild(img);
+            } else if (url) {
+              const link = document.createElement("a");
+              link.href = url;
+              link.textContent = "下載";
+              link.target = "_blank";
+              link.style.display = "block";
+              item.appendChild(link);
+            } else {
+              const no = document.createElement("div");
+              no.style.color = "#999";
+              no.textContent = "無可用連結";
+              item.appendChild(no);
+            }
+
+            const fname = document.createElement("span");
+            fname.className = "fname";
+            fname.textContent = name;
+            item.appendChild(fname);
+
+            filesEl.appendChild(item);
+          });
+        }
+
+        closeBtn.addEventListener("click", hideTaskInfo);
+
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) hideTaskInfo();
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && modal.classList.contains("show")) {
+            hideTaskInfo();
+          }
+        });
+
+        async function fetchTasks() {
+          try {
+            const resp = await fetch("backend/get_tasks.php", {
+              credentials: "same-origin",
+            });
+            if (!resp.ok) throw new Error("載入失敗");
+
+            const data = await resp.json();
+            window.allTasks = data;
+            renderTasks(data);
+          } catch (err) {
+            console.error("載入任務失敗", err);
+            alert("無法載入任務，請稍後再試");
+          }
+        }
+
+        function applyFilters() {
+          const region = locationSelect.value;
+          const min = parseInt(priceMin.value, 10);
+          const max = parseInt(priceMax.value, 10);
+
+          const filtered = window.allTasks.filter((t) => {
+            const matchRegion =
+              region === "" || region === "不限" || t.region === region;
+            const matchKeyword =
+              !keyword ||
+              t.title.toLowerCase().includes(keyword) ||
+              t.desc.toLowerCase().includes(keyword);
+
+            const rewardStr = t.reward.replace(/[^\d.]/g, "");
+            const reward = parseFloat(rewardStr);
+
+            const matchMin = isNaN(min) || reward >= min;
+            const matchMax = isNaN(max) || reward <= max;
+
+            return matchRegion && matchKeyword && matchMin && matchMax;
+          });
+
+          renderTasks(filtered);
+        }
+
+        function formatTaiwanDatetime(datetimeStr) {
+          const date = new Date(datetimeStr);
+          return date.toLocaleString("zh-TW", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+          });
+        }
+
+        function renderTasks(items) {
+          taskListEl.innerHTML = "";
+          totalEl.textContent = `共 ${items.length} 筆任務`;
+
+          const uniqueRegions = [
+            ...new Set(window.allTasks.map((t) => t.region).filter(Boolean)),
+          ];
+
+          if (!locationSelect.dataset.initialized) {
+            locationSelect.innerHTML =
+              `<option value="">全部地區</option><option value="不限">不限</option>` +
+              uniqueRegions
+                .filter((r) => r !== "不限")
+                .map((r) => `<option value="${r}">${r}</option>`)
+                .join("");
+            locationSelect.dataset.initialized = "true";
+          }
+
+          items.forEach((it) => {
+            const node = tpl.content.cloneNode(true);
+            node.querySelector(".title").textContent = it.title;
+            node.querySelector(".reward").textContent = `報酬：${it.reward}`;
+            node.querySelector(
+              ".deadline"
+            ).textContent = `截止：${formatTaiwanDatetime(it.deadline)}`;
+            node.querySelector(".region").textContent = `地區：${it.region}`;
+            node.querySelector(".desc").textContent = it.desc;
+
+            const posterInfo = document.createElement("div");
+            posterInfo.className = "meta-row";
+            posterInfo.textContent = `發佈者 ID：${it.poster_id}`;
+            node.querySelector(".task-left").appendChild(posterInfo);
+
+            node.querySelector(".apply").addEventListener("click", () => {
+              showTaskInfo(it);
+            });
+
+            taskListEl.appendChild(node);
+          });
+        }
+
+        locationSelect.addEventListener("change", applyFilters);
+        priceMin.addEventListener("input", applyFilters);
+        priceMax.addEventListener("input", applyFilters);
+
+        fetchTasks();
+      });
+    </script>
+  </body>
+</html>
