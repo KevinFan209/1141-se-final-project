@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>建立專案</title>
-    <style type="text/css">
+    <style type="text/css" src="1141-se.css"></style>
+    <style>
         body {
             width: 70%;
             margin: auto;
@@ -39,24 +40,12 @@
         }
     </style>
 </head>
-<script type="text/javascript">
-    // 獲取當前日期 (格式 YYYY-MM-DD)
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0'); // 月份是 0-11
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayString = `${year}-${month}-${day}`;
-    $("datatime-local").min = todayString;
-    function $(id){
-        return document.getElementById(id)
-}
-</script>
 <body>
     <h1>建立新專案</h1>
     <form method="post" action="/projects/create">
         <input type="text" name="title" placeholder="專案標題" required><br>
         <textarea name="description" placeholder="專案描述" required></textarea><br>
-        報價期限: <input id="datetime-local" type="datetime-local" name="proposal_deadline" step="4" required>
+        報價期限: <input id="datetime-local" type="datetime-local" name="proposal_deadline" required>
         <button type="submit">建立專案</button>
     </form>
     <a href="/">返回首頁</a>

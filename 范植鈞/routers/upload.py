@@ -29,7 +29,7 @@ async def upload_project_file(
         raise HTTPException(status_code=404, detail="專案不存在")
 
     # 建立路徑：upload_file/{project.title}/in_process/{日期}/
-    in_process_path = f"upload_file/{project.title}/in_process/{datetime.now().strftime("%Y-%m-%d_%H-%M")}"
+    in_process_path = f"upload_file/{project.title}/in_process/{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}"
     os.makedirs(in_process_path, exist_ok=True)
 
     # 儲存檔案

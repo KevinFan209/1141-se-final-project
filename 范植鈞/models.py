@@ -63,3 +63,46 @@ class Bid(Base):
     #定義資料表之間的關係
     project = relationship("Project", back_populates="bids")
     contractor = relationship("User")
+
+class Intents(Base): #from 王茂綸 
+    __tablename__ = "intents"
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("projects.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    username = Column(String(50), unique=True, nullable=False)
+    quote = Column(Text, nullable=False)
+    message = Column(Text, nullable=False)
+    attachments = Column()
+    created_at = Column(DateTime, default=datetime.now)
+
+class Issues(Base): #from 王茂綸
+    __tablename__ = "issues"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    issue_is_opened = Column(Boolean, nullable=False)
+    create_by =  Column(Integer, ForeignKey("users.id"))
+    assigned_to = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.now)
+    resolve_at = Column(DateTime, default=datetime.now)
+
+class Issues_comments(Base): #from 王茂綸
+    __tablename__ = "issues_comments"
+    id = Column(Integer, primary_key=True, index=True)
+    issue_id = Column(Integer, ForeignKey("issues.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+class Replies(Base): #from 王茂綸
+    __tablename__ = "replies"
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, unique=True)
+    responder_id = Column(Integer, unique=True)
+    price_text = Column(String(100), nullable=False)
+    message = Column(Text)
+    attachments = Column()
+    status = Column(String(30))
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now)
