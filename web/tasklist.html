@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>出任務 — 任務列表</title>
+    <style>
+      :root {
+        --bg: #f7f8fb;
+        --card: #fff;
+        --brand: #e53935;
+        --accent: #4285f4;
+        --muted: #666;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Noto Sans TC", sans-serif;
+        background: var(--bg);
+        color: #111;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .topbar {
+        background: #fff;
+        border-bottom: 1px solid #e6e9ef;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      }
+      .topbar .container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        height: 64px;
+      }
+      .brand {
+        font-weight: 800;
+        color: var(--brand);
+        font-size: 20px;
+      }
+      .user-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .primary {
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
+        padding-top: 18px;
+      }
+      .left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .filters {
+        background: var(--card);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+      }
+      .filter-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .filter-row select {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+      }
+
+      .task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .task {
+        background: var(--card);
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .task-left {
+        flex: 1;
+      }
+      .task .title {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+      .meta-row {
+        color: var(--muted);
+        font-size: 13px;
+        display: flex;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .desc {
+        color: #333;
+        line-height: 1.4;
+      }
+
+      .task-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* 垂直置中 */
+        gap: 8px;
+        margin-left: 12px;
+      }
+      .task-actions .apply {
+        background: #ff8a65;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+      }
+      .task-actions .fav {
+        background: transparent;
+        border: 1px solid #eee;
+        padding: 6px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .tips-card {
+        background: #fff;
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #ffdce0;
+      }
+      .tips-card h3 {
+        margin: 0 0 8px 0;
+        color: #b71c1c;
+      }
+      .tips-card ol {
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .learn-more {
+        display: inline-block;
+        margin-top: 10px;
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .stats-card {
+        background: #fff;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+      }
+      .small {
+        background: #f0f4ff;
+        border: 1px solid #dfe8ff;
+        padding: 8px 10px;
+        border-radius: 6px;
+        margin-right: 8px;
+        cursor: pointer;
+      }
+      /* Modal 背景遮罩 */
+      .modal {
+        display: none; /* 初始隱藏 */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        overflow: auto;
+      }
+
+      /* 顯示時加上動畫 class */
+      .modal.show {
+        display: flex;
+      }
+
+      /* Modal 內容容器：動畫初始狀態 */
+      .modal-content {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        position: relative;
+        transform: translateY(50px);
+        opacity: 0;
+        transition: transform 0.4s ease, opacity 0.4s ease;
+      }
+
+      /* 顯示動畫：由下往上淡入 */
+      .modal.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      /* 關閉動畫：由上往下淡出 */
+      .modal.hide .modal-content {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+
+      /* 關閉按鈕 */
+      .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+
+      /* 彈出內容排版 */
+      .task-field {
+        margin-bottom: 1.5rem;
+        font-size: 15px;
+        color: #333;
+      }
+      .task-field strong {
+        color: var(--brand);
+      }
+      .file-list {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: #555;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .file-item {
+        display: inline-block;
+        width: 120px;
+        padding: 6px;
+        border: 1px solid #e6e9ef;
+        border-radius: 6px;
+        background: #fff;
+        text-align: center;
+        font-size: 12px;
+        color: #333;
+      }
+      .file-item img {
+        display: block;
+        max-width: 100%;
+        max-height: 80px;
+        object-fit: cover;
+        margin-bottom: 6px;
+        border-radius: 4px;
+      }
+      .file-item .fname {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* 按鈕狀態 */
+      #confirmApplyBtn.active {
+        background: #2e7d32; /* 綠色 */
+        color: #fff;
+      }
+      #confirmApplyBtn.inactive {
+        background: #cfcfcf; /* 灰色 */
+        color: #666;
+      }
+      #confirmApplyBtn.loading {
+        opacity: 0.9;
+      }
+      .fixed-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border-bottom: 1px solid #ddd;
+        z-index: 999;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      .header-container {
+        display: flex;
+        align-items: center;
+        padding: 10px 16px;
+      }
+
+      .menu-btn {
+        font-size: 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        margin-right: 12px;
+      }
+
+      .brand {
+        font-weight: bold;
+        font-size: 18px;
+        color: #e53935;
+      }
+
+      .menu-list {
+        display: none;
+        flex-direction: column;
+        background: #f9f9f9;
+        border-top: 1px solid #eee;
+        padding: 10px 16px;
+      }
+
+      .menu-list.show {
+        display: flex;
+      }
+
+      .menu-list a {
+        text-decoration: none;
+        color: #333;
+        padding: 8px 0;
+        font-size: 16px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .menu-list a:hover {
+        color: #e53935;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="fixed-header">
+      <div class="header-container">
+        <button id="menuToggle" class="menu-btn">☰</button>
+        <div class="brand">出任務平台</div>
+      </div>
+      <nav id="menuList" class="menu-list">
+        <a href="main.html">🏠 首頁</a>
+        <a href="boss.html">👤 發出案件管理</a>
+        <a href="tasker.html">⚙️ 承接任務管理</a>
+      </nav>
+    </header>
+    <header class="topbar">
+      <div class="container">
+        <div class="brand">出任務</div>
+
+        <div class="user-actions">
+          <div class="userid">T6205618</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout">
+      <section class="left-col">
+        <div class="filters">
+          <div class="meta">
+            <span id="total">共 0 筆任務</span>
+          </div>
+          <div class="filter-row">
+            <select id="location">
+              <option>全部地區</option>
+            </select>
+            <div style="display: flex; gap: 6px">
+              <input
+                id="priceMin"
+                type="number"
+                placeholder="最低金額"
+                style="width: 100px"
+              />
+              <input
+                id="priceMax"
+                type="number"
+                placeholder="最高金額"
+                style="width: 100px"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div id="taskList" class="task-list">
+          <!-- 任務項目由 JS 渲染 -->
+        </div>
+      </section>
+
+      <aside class="right-col">
+        <div class="tips-card">
+          <h3>任務指南 / Tips</h3>
+          <ol>
+            <li>工作內容是否清晰</li>
+            <li>工作時間是否合理</li>
+            <li>是否有額外要求（如個資、OTP）</li>
+          </ol>
+        </div>
+      </aside>
+    </main>
+
+    <template id="taskTpl">
+      <article class="task">
+        <div class="task-left">
+          <div class="title"></div>
+          <div class="meta-row">
+            <span class="reward"></span>
+            <span class="deadline"></span>
+            <span class="region"></span>
+          </div>
+          <p class="desc"></p>
+        </div>
+        <div class="task-actions">
+          <button class="apply">提出承包意願</button>
+        </div>
+      </article>
+    </template>
+
+    <div id="newTaskModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <button class="close-btn" id="closeNewTask">&times;</button>
+    <h2>案件詳情</h2>
+    <div class="task-field" style="background: #fff9f9; padding: 12px; border-radius: 8px; border: 1px solid #ffdce0; margin-bottom: 15px;">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <strong>發案人信譽：</strong>
+    <span id="bossAvgScore" style="color: #f57c00; font-weight: bold;">載入中...</span>
+  </div>
+  <div id="bossReviews" style="font-size: 13px; color: #666; margin-top: 8px; max-height: 100px; overflow-y: auto; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee;">
+    等待查詢評價...
+  </div>
+</div>
+    <div class="task-field">
+      <strong>標題：</strong> <span id="taskTitle"></span> </div>
+    <div class="task-field">
+      <strong>預算：</strong> <span id="taskBudget"></span> </div>
+    <div class="task-field">
+      <strong>地區：</strong> <span id="taskRegion"></span> </div>
+    <div class="task-field">
+      <strong>截止日：</strong> <span id="taskClose"></span> </div>
+    <div class="task-field">
+      <strong>說明：</strong>
+      <p id="taskMeta"></p> </div>
+    
+    <div class="task-field" style="border-top: 1px dashed #ccc; padding-top: 15px;">
+      <strong>上傳提案計畫書 (PDF)：</strong>
+      <input type="file" id="proposalFile" accept=".pdf" style="width: 100%; margin-top: 8px;">
+    </div>
+
+    <div class="task-field">
+      <strong>附件檔案：</strong>
+      <div id="taskFiles" class="file-list">—</div>
+    </div>
+    
+    <div class="task-field" style="text-align: right">
+      <button id="confirmApplyBtn" class="primary">✅ 送出提案</button>
+    </div>
+  </div>
+</div>
+
+    <script>
+  window.addEventListener("DOMContentLoaded", () => {
+    // --- 1. 元素選取與變數初始化 ---
+    const menuToggle = document.getElementById("menuToggle");
+    const menuList = document.getElementById("menuList");
+    const taskListEl = document.getElementById("taskList");
+    const tpl = document.getElementById("taskTpl");
+    const totalEl = document.getElementById("total");
+    const locationSelect = document.getElementById("location");
+    const priceMin = document.getElementById("priceMin");
+    const priceMax = document.getElementById("priceMax");
+    const modal = document.getElementById("newTaskModal");
+    const closeBtn = document.getElementById("closeNewTask");
+    const confirmApplyBtn = document.getElementById("confirmApplyBtn");
+    const filesEl = document.getElementById("taskFiles");
+
+    window.allTasks = [];
+    window.currentUserId = ""; 
+
+    // --- 2. 補回：彈窗顯示與隱藏函式 ---
+
+    // 顯示任務詳情並準備提案
+async function showTaskInfo(task) {
+    console.log("✅ 進入 showTaskInfo, 準備處理任務:", task.id);
+
+    const modal = document.getElementById("newTaskModal");
+    if (!modal) return;
+
+    // 1. 填充基本文字 (確保 ID 正確)
+    const safeSetText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val || "";
+    };
+
+    safeSetText("taskTitle", task.title);
+    safeSetText("taskBudget", task.reward);
+    safeSetText("taskRegion", task.region);
+    safeSetText("taskMeta", task.desc);
+    safeSetText("taskClose", formatTaiwanDatetime(task.deadline));
+
+    // 2. 顯示彈窗
+    modal.classList.add("show");
+    document.body.style.overflow = "hidden";
+    
+    // 3. 處理附件預覽
+    if (typeof renderAttachments === "function") {
+        renderAttachments(task.attachments);
+    }
+
+    // --- 關鍵：處理評價顯示 ---
+    const scoreEl = document.getElementById("bossAvgScore");
+    const reviewsEl = document.getElementById("bossReviews");
+
+    // 重設顯示狀態
+    if (scoreEl) scoreEl.textContent = "讀取中...";
+    if (reviewsEl) reviewsEl.innerHTML = "正在載入評價...";
+
+    // 確認發案人 ID (根據您的資料庫，應該是 poster_id)
+    const bossId = task.poster_id || task.user_id;
+    console.log("🔍 正在查詢發案人 ID:", bossId);
+
+    if (!bossId) {
+        if (scoreEl) scoreEl.textContent = "無發案人資訊";
+        if (reviewsEl) reviewsEl.innerHTML = "";
+        return;
+    }
+
+    try {
+        // 發送請求到後端
+        const response = await fetch(`backend/get_user_rating.php?user_id=${bossId}`);
+        const data = await response.json();
+        console.log("📦 評價 API 回傳結果:", data);
+
+        if (data.success && data.total_reviews > 0) {
+            // 顯示分數
+            if (scoreEl) {
+                scoreEl.textContent = `⭐ ${parseFloat(data.average_score).toFixed(1)} (${data.total_reviews} 則評價)`;
+            }
+            // 顯示質性意見
+            if (reviewsEl) {
+                if (data.reviews && data.reviews.length > 0) {
+                    reviewsEl.innerHTML = data.reviews.map(r => 
+                        `<div style="margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:5px;">
+                            • ${r.comment ? r.comment : '（僅給分未留言）'}
+                        </div>`
+                    ).join("");
+                } else {
+                    reviewsEl.innerHTML = "目前暫無文字評價。";
+                }
+            }
+        } else {
+            if (scoreEl) scoreEl.textContent = "尚無評分";
+            if (reviewsEl) reviewsEl.innerHTML = "該發案人目前還沒有任何紀錄。";
+        }
+    } catch (err) {
+        console.error("❌ Fetch Error:", err);
+        if (scoreEl) scoreEl.textContent = "連線失敗";
+        if (reviewsEl) reviewsEl.innerHTML = "無法取得評價資訊。";
+    }
+}
+
+    // 隱藏彈窗
+    function hideTaskInfo() {
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+
+    // --- 3. 核心功能：Session 取得與任務過濾 ---
+
+    // 取得 Session 資料並初始化頁面
+    async function initSessionAndLoad() {
+        try {
+            const res = await fetch("backend/get_session_user.php", { credentials: "same-origin" });
+            if (!res.ok) throw new Error("無法取得 session");
+            const data = await res.json();
+            window.currentUserId = String(data.user_id || "");
+            
+            const idEl = document.querySelector(".userid");
+            if (idEl) idEl.textContent = data.user_id ? `ID:${data.user_id}` : "ID:未登入";
+
+            await fetchTasks();
+        } catch (err) {
+            console.warn("取得使用者失敗", err);
+            await fetchTasks();
+        }
+    }
+
+    // 從後端獲取任務
+    async function fetchTasks() {
+        try {
+            const resp = await fetch("backend/get_tasks.php", { credentials: "same-origin" });
+            if (!resp.ok) throw new Error("載入失敗");
+            window.allTasks = await resp.json();
+            applyFilters(); 
+        } catch (err) {
+            console.error("載入任務失敗", err);
+        }
+    }
+
+    // 篩選邏輯：包含隱藏自己發布與已過期的任務
+    function applyFilters() {
+        const region = locationSelect.value;
+        const min = parseInt(priceMin.value, 10);
+        const max = parseInt(priceMax.value, 10);
+        const now = new Date().getTime();
+
+        const filtered = window.allTasks.filter((t) => {
+            const matchRegion = !region || region === "全部地區" || region === "不限" || t.region === region;
+            const reward = parseFloat(t.reward.replace(/[^\d.]/g, ""));
+            const matchMin = isNaN(min) || reward >= min;
+            const matchMax = isNaN(max) || reward <= max;
+
+            // 隱藏自己發布的任務
+            const isNotMine = !window.currentUserId || String(t.poster_id) !== String(window.currentUserId);
+
+            // 隱藏已過期的任務
+            const taskDate = new Date(t.deadline);
+            const isNotExpired = isNaN(taskDate.getTime()) || taskDate.getTime() > now;
+
+            return matchRegion && matchMin && matchMax && isNotMine && isNotExpired;
+        });
+        renderTasks(filtered);
+    }
+
+    // --- 4. 渲染、附件處理與送出提案 ---
+
+    function renderTasks(items) {
+        taskListEl.innerHTML = "";
+        totalEl.textContent = `共 ${items.length} 筆任務`;
+
+        if (!locationSelect.dataset.initialized) {
+            const regions = [...new Set(window.allTasks.map(t => t.region).filter(Boolean))];
+            locationSelect.innerHTML = `<option value="">全部地區</option><option value="不限">不限</option>` +
+                regions.filter(r => r !== "不限").map(r => `<option value="${r}">${r}</option>`).join("");
+            locationSelect.dataset.initialized = "true";
+        }
+
+        items.forEach((it) => {
+            const node = tpl.content.cloneNode(true);
+            node.querySelector(".title").textContent = it.title;
+            node.querySelector(".reward").textContent = `報酬：${it.reward}`;
+            node.querySelector(".deadline").textContent = `截止：${formatTaiwanDatetime(it.deadline)}`;
+            node.querySelector(".region").textContent = `地區：${it.region}`;
+            node.querySelector(".desc").textContent = it.desc;
+            node.querySelector(".apply").addEventListener("click", () => showTaskInfo(it));
+            taskListEl.appendChild(node);
+        });
+    }
+
+    function formatTaiwanDatetime(str) {
+        return new Date(str).toLocaleString("zh-TW", {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true
+        });
+    }
+
+    // 處理附件顯示
+    function renderAttachments(rawAttachments) {
+        filesEl.innerHTML = "";
+        let attachments = [];
+        try {
+            attachments = (typeof rawAttachments === "string") ? 
+                (rawAttachments.trim() ? JSON.parse(rawAttachments) : []) : (rawAttachments || []);
+        } catch (e) { attachments = []; }
+
+        if (!attachments.length) { filesEl.textContent = "—"; return; }
+
+        attachments.forEach(f => {
+            const item = document.createElement("div");
+            item.className = "file-item";
+            const name = f.orig_name || f.filename || "檔案";
+            // 標準化路徑邏輯可沿用您原有的 normalizeUrl
+            const url = f.url || f.path || ""; 
+            
+            const link = document.createElement("a");
+            link.href = url; link.textContent = "查看"; link.target = "_blank";
+            item.appendChild(link);
+
+            const fname = document.createElement("span");
+            fname.className = "fname"; fname.textContent = name;
+            item.appendChild(fname);
+            filesEl.appendChild(item);
+        });
+    }
+
+    // 監聽「送出提案」
+    confirmApplyBtn.addEventListener("click", async () => {
+        const fileInput = document.getElementById("proposalFile");
+        const file = fileInput ? fileInput.files[0] : null;
+
+        if (!file || file.type !== "application/pdf") {
+            alert("請先選擇一份 PDF 格式的計畫書");
+            return;
+        }
+
+        confirmApplyBtn.disabled = true;
+        confirmApplyBtn.textContent = "上傳中...";
+
+        const formData = new FormData();
+        formData.append("task_id", modal.dataset.taskId);
+        formData.append("proposal_pdf", file);
+
+        try {
+            const resp = await fetch("backend/apply_intent.php", {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin"
+            });
+            const result = await resp.json();
+            if (result.success) {
+                alert("✅ 提案已送出！");
+                hideTaskInfo();
+            } else {
+                alert("❌ 失敗：" + (result.message || "未知錯誤"));
+            }
+        } catch (err) {
+            alert("⚠️ 網路錯誤");
+        } finally {
+            confirmApplyBtn.disabled = false;
+            confirmApplyBtn.textContent = "✅ 送出提案";
+        }
+    });
+
+    // --- 5. 事件監聽 ---
+    closeBtn.addEventListener("click", hideTaskInfo);
+    modal.addEventListener("click", (e) => e.target === modal && hideTaskInfo());
+    document.addEventListener("keydown", (e) => e.key === "Escape" && hideTaskInfo());
+    
+    locationSelect.addEventListener("change", applyFilters);
+    priceMin.addEventListener("input", applyFilters);
+    priceMax.addEventListener("input", applyFilters);
+    menuToggle.addEventListener("click", () => menuList.classList.toggle("show"));
+
+    // 啟動流程
+    initSessionAndLoad();
+});
+</script>
+  </body>
+</html>
