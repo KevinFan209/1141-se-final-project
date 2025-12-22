@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tasker 案件管理</title>
+    <style>
+      /* modal 共用 */
+      /* Modal 背景遮罩 */
+      /* Modal 背景遮罩 */
+      .modal {
+        display: none; /* 初始隱藏 */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        overflow: auto;
+      }
+
+      /* 顯示時加上動畫 class */
+      .modal.show {
+        display: flex;
+      }
+
+      /* Modal 內容容器：動畫初始狀態 */
+      .modal-content {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        position: relative;
+        transform: translateY(50px);
+        opacity: 0;
+        transition: transform 0.4s ease, opacity 0.4s ease;
+      }
+
+      /* 顯示動畫：由下往上淡入 */
+      .modal.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      /* 關閉動畫：由上往下淡出 */
+      .modal.hide .modal-content {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+
+      /* 關閉按鈕 */
+      .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      /* --- 新增：待解決事項與聊天視窗樣式 --- */
+      /* 讓新的彈窗層級比原本的高，確保蓋在上面 */
+      #issuesModal {
+        z-index: 2000;
+      }
+
+      .chat-layout {
+        display: flex;
+        height: 60vh;
+        border: 1px solid #e6e9ef;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+
+      /* 左側：待解決事項 */
+      .chat-sidebar {
+        width: 280px;
+        background: #f7f8fb;
+        border-right: 1px solid #e6e9ef;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-header {
+        padding: 15px;
+        border-bottom: 1px solid #e6e9ef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #fff;
+      }
+
+      .sidebar-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #333;
+      }
+
+      /* 圓形無文字加號按鈕 */
+      .add-issue-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        font-size: 20px;
+        line-height: 28px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+      .add-issue-btn:hover {
+        background: #3367d6;
+      }
+
+      .issue-list-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+      }
+
+      .issue-item {
+        background: #fff;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        border: 1px solid #e6e9ef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+      }
+
+      .issue-done-btn {
+        background: #fff;
+        border: 1px solid #4caf50;
+        color: #4caf50;
+        border-radius: 4px;
+        font-size: 12px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      .issue-done-btn:hover {
+        background: #4caf50;
+        color: #fff;
+      }
+
+      /* 右側：聊天介面 */
+      .chat-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+      }
+
+      .chat-history {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #fafafa;
+      }
+
+      .chat-message {
+        margin-bottom: 15px;
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+      }
+
+      .msg-left {
+        background: #fff;
+        border: 1px solid #e6e9ef;
+        align-self: flex-start;
+        margin-right: auto;
+        border-bottom-left-radius: 2px;
+      }
+
+      .msg-right {
+        background: #eef6ff;
+        color: #1a73e8;
+        align-self: flex-end;
+        margin-left: auto;
+        border-bottom-right-radius: 2px;
+        float: right;
+        clear: both;
+      }
+
+      .chat-input-area {
+        padding: 10px;
+        border-top: 1px solid #e6e9ef;
+        gap: 10px;
+        background: #fff;
+      }
+
+      .chat-input-area input {
+        flex: 1;
+        border: 1px solid #d7dbe0;
+        border-radius: 20px;
+        padding: 8px 16px;
+        outline: none;
+      }
+      /* 新增：未選擇事項時的提示樣式 */
+      .chat-prompt {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #999;
+        background: #fff;
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      id="openIssuesBtn"
+      class="primary"
+      style="background: #009688; margin-right: auto"
+    >
+      待解決事項管理
+    </button>
+    <!-- Issues Modal -->
+    <div id="issuesModal" class="modal" aria-hidden="true">
+      <div
+        class="modal-content"
+        style="max-width: 900px; padding: 0; overflow: hidden; height: auto"
+      >
+        <button
+          class="close-btn"
+          id="closeIssuesModal"
+          style="z-index: 10; top: 10px; right: 10px"
+        >
+          &times;
+        </button>
+
+        <div style="padding: 15px 20px; border-bottom: 1px solid #eee">
+          <h3 style="margin: 0">案件協作與溝通</h3>
+        </div>
+
+        <div class="chat-layout">
+          <div class="chat-sidebar">
+            <div class="sidebar-header">
+              <h4>待解決事項</h4>
+              <button id="addIssueBtn" class="add-issue-btn" title="新增事項">
+                +
+              </button>
+            </div>
+            <div id="issueListContainer" class="issue-list-container"></div>
+          </div>
+
+          <div class="chat-main">
+            <div id="chatHistory" class="chat-history"></div>
+
+            <div id="chatInputArea" class="chat-input-area">
+              <input
+                type="text"
+                id="chatInput"
+                placeholder="輸入訊息... (輸入「結束issue」以關閉此討論)"
+              />
+              <button
+                id="chatSendBtn"
+                class="primary"
+                style="padding: 6px 16px"
+              >
+                送出
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      /* --- 新增/修改：待解決事項與聊天室邏輯 (整合 DB API) --- */
+
+      // 在你的 <script> 區塊內
+      // 原本: const FETCH_ISSUES_URL = "/issue.php/api/issues/list";
+
+      // --- 修改後 ---
+      const BASE_API_URL = "backend/issue.php"; // 確保這是 issue.php 的絕對或相對路徑
+
+      const FETCH_ISSUES_URL = `${BASE_API_URL}?action=issues/list`;
+      const CREATE_ISSUE_URL = `${BASE_API_URL}?action=issues/create`;
+      const RESOLVE_ISSUE_URL = `${BASE_API_URL}?action=issues/resolve`;
+      const FETCH_COMMENTS_URL = `${BASE_API_URL}?action=issues/comments`;
+      const CREATE_COMMENT_URL = `${BASE_API_URL}?action=issue/comment/create`;
+      // --- 狀態管理 (保留) ---
+      let currentIssueTaskId = null;
+      let currentSelectedIssueId = null;
+      const commentCache = {};
+      // ... 保持其他 JS 邏輯不變 ...
+      // --- 1. 彈窗開啟與關閉 ---
+      document
+        .getElementById("openIssuesBtn")
+        .addEventListener("click", function () {
+          if (
+            typeof currentRepliesTaskId !== "undefined" &&
+            currentRepliesTaskId
+          ) {
+            openIssuesModal(currentRepliesTaskId);
+          } else {
+            alert("無法取得案件 ID");
+          }
+        });
+
+      window.openIssuesModal = async function (taskId) {
+        if (!window.currentUserId) {
+          alert("請先登入或等待使用者資訊載入完成。");
+          return;
+        }
+
+        currentIssueTaskId = taskId;
+        currentSelectedIssueId = null;
+
+        const modal = document.getElementById("issuesModal");
+        const addIssueBtn = document.getElementById("addIssueBtn"); // 取得新增按鈕
+
+        // --- 💡 隱藏/顯示新增按鈕邏輯 ---
+        // 從主清單變數 (假設為 allTasks) 找出該案件
+        // 注意：請確保你的 fetchAndRenderTasks 成功後有將資料存入 allTasks
+        const currentTask = allTasks.find((t) => t.id == taskId);
+
+        if (currentTask) {
+          // 判斷案件是否已結案 (相容布林值 true 或資料庫字串 "t")
+          const isTaskCompleted =
+            currentTask.is_completed === true ||
+            currentTask.is_completed === "t";
+
+          if (addIssueBtn) {
+            if (isTaskCompleted) {
+              // 若已結案，隱藏新增按鈕
+              addIssueBtn.style.display = "none";
+            } else {
+              // 若未結案，顯示新增按鈕 (flex 是為了維持原有的 UI 排版)
+              addIssueBtn.style.display = "flex";
+            }
+          }
+        }
+        // ---------------------------------
+
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+
+        try {
+          await fetchAndRenderIssues(taskId);
+        } catch (error) {
+          console.error("Open Issues Modal failed to load data:", error);
+          alert("載入待解決事項失敗，請檢查網路。");
+        }
+
+        // 渲染聊天區
+        renderChatHistory();
+      };
+      function closeIssuesModal() {
+        const modal = document.getElementById("issuesModal");
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        currentIssueTaskId = null;
+        currentSelectedIssueId = null;
+      }
+
+      // 綁定關閉事件
+      document
+        .getElementById("closeIssuesModal")
+        .addEventListener("click", closeIssuesModal);
+      document.getElementById("issuesModal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("issuesModal"))
+          closeIssuesModal();
+      });
+
+      // --- 2. 事項列表邏輯 (CRUD) ---
+
+      // 獲取並渲染事項
+      // boss.html:1568 附近
+      async function fetchAndRenderIssues(taskId) {
+        const issueListContainer =
+          document.getElementById("issueListContainer");
+        issueListContainer.innerHTML = `<div style="text-align:center; padding: 20px; font-size:12px;">載入中...</div>`;
+
+        try {
+          const resp = await fetch(`${FETCH_ISSUES_URL}&project_id=${taskId}`);
+          // --- 關鍵新增邏輯 ---
+          // 檢查 Content-Type Header 是否為 JSON
+          const contentType = resp.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            // 如果不是 JSON，則讀取回應文本，並拋出錯誤
+            const errorText = await resp.text();
+            console.error("Non-JSON Response Received:", errorText);
+            throw new Error(
+              "伺服器回應非 JSON 格式，請檢查伺服器錯誤日誌或 API 網址！"
+            );
+          }
+          // --- 關鍵新增邏輯結束 ---
+
+          // 如果回應是 JSON，則繼續解析
+          const data = await resp.json();
+
+          if (data.success && data.issues) {
+            renderIssueList(data.issues);
+            allIssues = data.issues || [];
+          } else {
+            issueListContainer.innerHTML = `<div style="color:red; text-align:center; padding: 20px; font-size:12px;">載入事項失敗: ${
+              data.message || "未知錯誤"
+            }</div>`;
+          }
+        } catch (err) {
+          console.error("Fetch issues error:", err);
+          // 將錯誤訊息顯示在畫面上，方便檢查
+          issueListContainer.innerHTML = `<div style="color:red; text-align:center; padding: 20px; font-size:12px;">
+            API 請求錯誤：${err.message || "無法連線或解析資料"}
+            <br>
+            請檢查 Console 內是否有 'Non-JSON Response Received' 訊息。
+        </div>`;
+        }
+      }
+
+      // 渲染事項列表 UI
+      // 在你的 <script> 區塊內，修改 renderIssueList 函式：
+
+      function renderIssueList(issues) {
+        const container = document.getElementById("issueListContainer");
+        container.innerHTML = "";
+
+        issues.forEach((issue) => {
+          const div = document.createElement("div");
+          div.className = "issue-item";
+
+          // 1. 處理日期格式化 (只取前 10 位字元: YYYY-MM-DD)
+          const rawDate = issue.created_at || "";
+          const formattedDate = rawDate.includes(" ")
+            ? rawDate.split(" ")[0]
+            : rawDate.slice(0, 10);
+
+          // 2. 處理紅綠燈邏輯 (false=綠色/處理中, true=紅色/已結案)
+          const isClosed =
+            issue.issue_is_opened == true || issue.issue_is_opened == 1;
+          const statusChar = isClosed ? "🔴" : "🟢";
+          const statusColor = isClosed ? "#e53935" : "#2e7d32";
+
+          div.innerHTML = `
+            <span class="issue-status" style="color: ${statusColor}">${statusChar}</span>
+            <span class="issue-title">${escapeHtml(issue.title)}</span>
+            <span class="issue-date">${formattedDate}</span>
+        `;
+
+          div.onclick = () => selectIssue(issue.id);
+          container.appendChild(div);
+        });
+      }
+
+      // 新增事項
+      // 綁定左側列表上方的 "+" 按鈕
+      document.getElementById("addIssueBtn").onclick = function () {
+        // 🚨 修正：確保 container 有被定義
+        const container = document.getElementById("issueListContainer");
+
+        if (!container) {
+          console.error("找不到 issueListContainer，請檢查 HTML ID 是否正確");
+          return;
+        }
+
+        if (document.querySelector(".issue-item.creating")) return;
+
+        const newItem = document.createElement("div");
+        newItem.className = "issue-item opened creating";
+        newItem.id = "issue-temp-new-issue";
+
+        // 新增時預設為處理中，所以顯示綠色 (false)
+        newItem.innerHTML = `
+        <span class="issue-status" style="color: #2e7d32">🟢</span>
+        <input type="text" id="tempIssueInput" placeholder="輸入名稱後按 Enter..." 
+               style="width: 100%; border: 1px solid var(--brand); outline: none; padding: 2px 5px;">
+        <span class="issue-date">現在</span>
+    `;
+
+        container.prepend(newItem); // 將新項目放到最上方
+        const input = newItem.querySelector("#tempIssueInput");
+        input.focus();
+
+        input.onkeydown = async (e) => {
+          if (e.key === "Enter") {
+            const title = input.value.trim();
+            if (title.length < 2) {
+              alert("標題太短囉！");
+              newItem.remove();
+              return;
+            }
+            await performSaveIssueToDB(title, newItem);
+          }
+        };
+
+        input.onblur = () => {
+          if (!input.value.trim()) newItem.remove();
+        };
+      };
+
+      // 實際傳送到後端的函式
+      async function performSaveIssueToDB(title, element) {
+        const form = new FormData();
+        form.append("project_id", currentRepliesTaskId); // 確保你有這個變數
+        form.append("title", title);
+
+        element.querySelector(".issue-status").textContent = "⌛";
+
+        try {
+          const resp = await fetch(CREATE_ISSUE_URL, {
+            method: "POST",
+            body: form,
+            credentials: "same-origin",
+          });
+          const j = await resp.json();
+
+          if (j.success) {
+            const realId = j.issue_id;
+            // 樣式立即改變為儲存後的樣子
+            element.id = `issue-${realId}`;
+            element.dataset.id = realId;
+            element.className = "issue-item opened";
+            element.innerHTML = `
+                <span class="issue-status">🟢</span>
+                <span class="issue-title">${title}</span>
+                <span class="issue-date">現在</span>
+            `;
+            // 點擊後可以開啟聊天
+            element.onclick = () => selectIssue(realId);
+            selectIssue(realId);
+          } else {
+            alert("新增失敗：" + j.message);
+            element.remove();
+          }
+        } catch (err) {
+          console.error("Save issue error:", err);
+          element.remove();
+        }
+      }
+
+      // 完成事項
+      window.completeIssue = async function (issueId) {
+        if (!confirm(`確定標記 Issue #${issueId} 為「已處理完成」嗎？`)) return;
+
+        const form = new FormData();
+        form.append("issue_id", issueId);
+
+        try {
+          const resp = await fetch(RESOLVE_ISSUE_URL, {
+            method: "POST",
+            body: form,
+            credentials: "same-origin",
+          });
+          const j = await resp.json();
+
+          if (j.success) {
+            alert("事項已標記為完成。");
+            if (currentSelectedIssueId === issueId) {
+              currentSelectedIssueId = null; // 如果完成的是當前選中的，取消選擇
+            }
+            await fetchAndRenderIssues(currentIssueTaskId); // 重新載入列表
+            renderChatHistory(); // 重新渲染聊天區 (可能顯示提示)
+          } else {
+            alert("標記失敗：" + (j.message || ""));
+          }
+        } catch (err) {
+          console.error("Resolve issue error:", err);
+          alert("網路錯誤，無法完成事項");
+        }
+      };
+
+      // 選擇事項
+      window.selectIssue = async function (issueId) {
+        if (issueId === currentSelectedIssueId) return; // 避免重複選擇
+
+        currentSelectedIssueId = issueId;
+
+        // 重新渲染列表以更新選中狀態
+        await fetchAndRenderIssues(currentIssueTaskId);
+
+        // 獲取並渲染該事項的留言
+        await fetchAndRenderComments(issueId);
+      };
+
+      // --- 3. 留言聊天邏輯 (CRUD) ---
+
+      // 獲取並渲染留言
+      async function fetchAndRenderComments(issueId) {
+        const historyContainer = document.getElementById("chatHistory");
+        historyContainer.innerHTML = `<div style="text-align:center; padding: 20px; font-size:12px;">載入留言中...</div>`;
+
+        try {
+          const resp = await fetch(`${FETCH_COMMENTS_URL}&issue_id=${issueId}`);
+          const data = await resp.json();
+
+          if (data.success && data.comments) {
+            commentCache[issueId] = data.comments; // 快取留言
+            renderChatHistory(data.comments);
+          } else {
+            historyContainer.innerHTML = `<div style="color:red; text-align:center; padding: 20px; font-size:12px;">載入留言失敗: ${
+              data.message || "未知錯誤"
+            }</div>`;
+          }
+        } catch (err) {
+          console.error("Fetch comments error:", err);
+          historyContainer.innerHTML = `<div style="color:red; text-align:center; padding: 20px; font-size:12px;">網路錯誤，無法載入留言</div>`;
+        }
+      }
+
+      // 渲染留言歷史紀錄 UI
+      // ... (在 renderChatHistory 函式內部)
+      // 請確認您的 renderChatHistory 函式與以下版本一致
+      let allIssues = []; // 用於存儲目前的所有事項列表
+
+      function renderChatHistory(comments = null) {
+        const historyContainer = document.getElementById("chatHistory"); // 確保定義
+        const inputArea = document.getElementById("chatInputArea"); // 確保定義
+        historyContainer.innerHTML = "";
+
+        // 檢查是否有選中的事項
+        if (currentSelectedIssueId === null) {
+          historyContainer.innerHTML = `<div class="chat-prompt">請從左側列表中選擇一個待解決事項以開始討論。</div>`;
+          inputArea.style.display = "none"; // 隱藏輸入框
+          return;
+        }
+
+        // 根據目前選中的 Issue 的is_open狀態決定輸入區顯示與否
+        const currentIssue = allIssues.find(
+          (i) => i.id == currentSelectedIssueId
+        );
+        if (inputArea) {
+          // 只有在 Issue 存在且狀態為 true (1) 時才顯示 flex
+          if (
+            currentIssue &&
+            (currentIssue.issue_is_opened == true ||
+              currentIssue.issue_is_opened == 1)
+          ) {
+            inputArea.style.display = "flex";
+          } else {
+            // 否則設為 none，這會直接寫入 element.style，權重足以覆蓋 CSS
+            inputArea.style.display = "none";
+          }
+        }
+
+        const list = comments || commentCache[currentSelectedIssueId] || [];
+        const currentUserIdStr = window.currentUserId;
+
+        if (list.length === 0) {
+          const div = document.createElement("div");
+          div.style.textAlign = "center";
+          div.style.color = "#999";
+          div.style.fontSize = "12px";
+          div.style.margin = "10px 0";
+          div.textContent = "這是新的討論，開始對話吧！";
+          historyContainer.appendChild(div);
+        }
+
+        list.forEach((comment) => {
+          const div = document.createElement("div");
+          const isMe = String(comment.user_id) === currentUserIdStr;
+
+          div.className = `chat-message ${isMe ? "msg-right" : "msg-left"}`;
+          div.textContent = escapeHtml(comment.content);
+          historyContainer.appendChild(div);
+
+          const clear = document.createElement("div");
+          clear.style.clear = "both";
+          historyContainer.appendChild(clear);
+        });
+        // 捲動到底部
+        historyContainer.scrollTop = historyContainer.scrollHeight;
+      }
+
+      // 發送留言
+      // 發送留言按鈕
+      document.getElementById("chatSendBtn").onclick = async function (event) {
+        if (currentSelectedIssueId === null) {
+          alert("請先選擇一個事項再留言");
+          return;
+        }
+
+        const input = document.getElementById("chatInput");
+        const content = input.value.trim();
+        if (content === "結束issue") {
+          if (!confirm("確定要結案並關閉此討論嗎？")) return;
+
+          const form = new FormData();
+          form.append("issue_id", currentSelectedIssueId);
+
+          try {
+            // 呼叫您之前的後端 API
+            const resp = await fetch(
+              "backend/issue.php?action=issues/resolve",
+              {
+                method: "POST",
+                body: form,
+              }
+            );
+            const j = await resp.json();
+
+            if (j.success) {
+              alert("此事項已結案");
+              input.value = "";
+
+              // 🚨 重要：立刻重新抓取資料，這會更新 allIssues 陣列
+              await fetchAndRenderIssues(currentIssueTaskId);
+
+              // 🚨 重要：重新渲染對話框，這會觸發我們寫好的隱藏邏輯
+              await renderChatHistory();
+            } else {
+              alert("關閉失敗：" + j.message);
+            }
+          } catch (err) {
+            console.error("Resolve error:", err);
+          }
+          return; // 結束執行，不跑後面的「發送一般留言」邏輯
+        }
+
+        if (content) {
+          const form = new FormData();
+          form.append("issue_id", currentSelectedIssueId);
+          form.append("content", content);
+
+          try {
+            // 注意：這裡是 CREATE_COMMENT_URL
+            const resp = await fetch(CREATE_COMMENT_URL, {
+              method: "POST",
+              body: form,
+              credentials: "same-origin",
+            });
+            const j = await resp.json();
+
+            if (j.success) {
+              input.value = ""; // 清空輸入框
+              await fetchAndRenderComments(currentSelectedIssueId); // 刷新對話
+            } else {
+              alert("發送失敗：" + j.message);
+            }
+          } catch (err) {
+            console.error("Comment send error:", err);
+          }
+        }
+      };
+
+      // 支援按 Enter 發送
+      document.getElementById("chatInput").addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && currentSelectedIssueId !== null) {
+          document.getElementById("chatSendBtn").click();
+        }
+      });
+
+      // 在你的 <script> 區塊內新增以下函式和事件：
+
+      let isCreatingNewIssue = false; // 狀態標記，防止同時創建多個
+
+      /**
+       * 在 UI 上新增一個可供編輯的事項項目
+       */
+      function addNewIssueToUI() {
+        if (isCreatingNewIssue) {
+          // 如果已經在編輯，則不執行
+          alert("請先完成當前新增的事項。");
+          return;
+        }
+
+        // 假設我們使用一個臨時 ID 來標記這個「未儲存」的項目
+        const TEMP_ID = "temp-new-issue";
+
+        // 1. 創建新的列表項目
+        const item = document.createElement("div");
+        item.className = `issue-item opened creating`;
+        item.dataset.id = TEMP_ID;
+        item.id = `issue-${TEMP_ID}`;
+
+        item.innerHTML = `
+        <span class="issue-status">🆕</span>
+        <span class="issue-title" data-issue-id="${TEMP_ID}">請輸入標題</span>
+        <span class="issue-date">今天</span>
+    `;
+
+        const issueListContainer =
+          document.getElementById("issueListContainer");
+        issueListContainer.prepend(item); // 放到最頂端
+
+        // 2. 立即啟用編輯模式
+        const titleSpan = item.querySelector(".issue-title");
+        enableIssueEdit(titleSpan);
+
+        isCreatingNewIssue = true;
+      }
+
+      // 綁定 '+' 按鈕
+      document
+        .getElementById("addIssueBtn")
+        .addEventListener("click", addNewIssueToUI);
+
+      // 全域狀態：儲存當前編輯的 Issue DOM 元素
+      // 全域狀態：儲存當前編輯的 Issue DOM 元素
+      let currentEditingElement = null;
+
+      // 新增標記：用於阻止在 alert 之後立即重新觸發 blur
+      let isAlertActive = false;
+
+      /**
+       * 將 span 元素轉換為可輸入的 input 框，並綁定事件
+       */
+      function enableIssueEdit(titleElement) {
+        if (currentEditingElement) {
+          // 確保只能有一個編輯中的項目
+          currentEditingElement.focus();
+          return;
+        }
+
+        const issueId = titleElement.dataset.issueId;
+        const originalText =
+          titleElement.textContent.trim() === "請輸入標題"
+            ? ""
+            : titleElement.textContent;
+
+        // 創建 Input 元素
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = originalText;
+        input.placeholder = "請輸入事項標題 (必填)";
+        input.style.width = "100%";
+
+        // 替換 DOM
+        titleElement.replaceWith(input);
+        input.focus();
+
+        currentEditingElement = input; // 設置當前編輯元素
+
+        // --- 綁定事件 ---
+
+        // 1. Enter 鍵事件
+        input.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault(); // 阻止換行
+            input.blur(); // 觸發失焦事件來儲存
+          }
+        });
+
+        // 2. 失焦 (Blur) 事件 - 修正無限迴圈的關鍵
+        input.addEventListener("blur", async function () {
+          if (isAlertActive) return;
+
+          const newTitle = input.value.trim();
+
+          // 驗證長度
+          if (newTitle.length < 3) {
+            isAlertActive = true;
+            alert("⚠️ 標題長度不足，請輸入至少 3 個字符。");
+            setTimeout(() => {
+              isAlertActive = false;
+              input.focus();
+            }, 100);
+            return;
+          }
+
+          // --- 關鍵修改：呼叫儲存函式 ---
+          await saveNewIssue(issueId, newTitle, input);
+        });
+
+        // 3. 離開頁面前提示保存
+        window.addEventListener("beforeunload", function (e) {
+          if (currentEditingElement) {
+            e.preventDefault();
+            e.returnValue = "";
+          }
+        });
+      }
+
+      /**
+       * 儲存新的 Issue 到資料庫
+       */
+      async function saveNewIssue(issueId, title, inputElement) {
+        if (issueId !== "temp-new-issue" || !isCreatingNewIssue) return;
+
+        const itemElement = document.getElementById(`issue-${issueId}`);
+        if (!itemElement) return;
+
+        // --- 🚀 樂觀更新：立即改變樣式 ---
+        const newSpan = document.createElement("span");
+        newSpan.className = "issue-title";
+        newSpan.textContent = title;
+        newSpan.dataset.issueId = issueId; // 暫時使用 temp ID
+
+        // 立即將輸入框換回文字標籤
+        inputElement.replaceWith(newSpan);
+        itemElement.classList.remove("creating"); // 移除「建立中」的特殊樣式(如有)
+        itemElement.querySelector(".issue-status").textContent = "⌛"; // 顯示處理中圖示
+
+        try {
+          const form = new FormData();
+          form.append("project_id", currentRepliesTaskId);
+          form.append("title", title);
+
+          const resp = await fetch(CREATE_ISSUE_URL, {
+            method: "POST",
+            body: form,
+          });
+          const data = await resp.json();
+
+          if (data.success) {
+            // 儲存成功：更新為真實 ID 與正式圖示
+            newSpan.dataset.issueId = data.issue_id;
+            itemElement.dataset.id = data.issue_id;
+            itemElement.id = `issue-${data.issue_id}`;
+            itemElement.querySelector(".issue-status").textContent = "🟢";
+
+            // 重新綁定點擊事件，讓新項目可以被選中
+            itemElement.onclick = () => selectIssue(data.issue_id);
+
+            console.log("資料庫儲存成功");
+          } else {
+            throw new Error(data.message || "儲存失敗");
+          }
+        } catch (err) {
+          console.error("Save issue error:", err);
+          alert("儲存失敗：" + err.message);
+
+          // --- 🔙 復原邏輯：如果失敗，移除該項目並允許重新新增 ---
+          itemElement.remove();
+        } finally {
+          isCreatingNewIssue = false;
+          currentEditingElement = null;
+        }
+      }
+
+      // 暴露 openIssuesModal 給全域使用
+      window.openIssuesModal = openIssuesModal;
+    </script>
+  </body>
+</html>

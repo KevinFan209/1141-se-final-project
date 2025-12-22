@@ -59,6 +59,7 @@ class Bid(Base):
     price = Column(Float, nullable=False)
     proposal_file = Column(String, nullable=True)
     status = Column(String, default="pending")# pending(接受報價) or accept(同意報價) or rejected(拒絕報價)
+    submitted_at = Column(DateTime, default=datetime.now)
 
     #定義資料表之間的關係
     project = relationship("Project", back_populates="bids")
@@ -86,7 +87,7 @@ class Issues(Base): #from 王茂綸
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Issues_comments(Base): #from 王茂綸
-    __tablename__ = "issue_comments"
+    __tablename__ = "issues_comments"
 
     id = Column(Integer, primary_key=True, index=True)
     issue_id = Column(Integer, ForeignKey("issues.id"))

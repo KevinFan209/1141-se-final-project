@@ -1,15 +1,17 @@
-from flask import Blueprint, request, redirect, url_for, APIRouter
+from flask import Blueprint, request, redirect, url_for, render_template, flash
 from flask_login import login_required, current_user
+from fastapi import APIRouter
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
-from models import db, Review, Project
+from models import Review, Project, Bid
 
 templates = Jinja2Templates(directory="templates")
 
 router = APIRouter(prefix="/review", tags=["Review"])
+REVIEW_DEADLINE_DAYS = 7
 
 def get_user_rating_summary(user_id: int, limit_comments: int = 5):
     """
@@ -91,7 +93,7 @@ def role_dimensions(role: str):
     """
     回傳該角色被評時，三個維度的文字（符合圖片一）
     """
-    if role == ROLE_CLIENT:
+    if role == "client":
         return ("需求合理性", "驗收難度", "合作態度")
     # ROLE_CONTRACTOR
     return ("產出品質", "執行效率", "合作態度")
@@ -124,6 +126,90 @@ def can_submit_review(project, reviewer_id, reviewee_id):
     ).first()
 
     return existing is None
+
+@router.route('/project/<int:project_id>')
+def project_detail(project_id):
+    project = Project.query.get_or_404(project_id)
+
+    is_client = current_user.id == project.client_id
+    is_contractor_assigned = current_user.id == project.contractor_id
+    is_contractor_user = current_user.role == "contractor"
+    is_open = project.status == 'open'
+
+    if not (is_client or is_contractor_assigned or is_open):
+        flash('您沒有權限查看此專案。', 'danger')
+        return redirect(url_for('dashboard'))
+
+    proposals = []
+    if is_client:
+        proposals = Bid.query.filter_by(project_id=project_id).order_by(Bid.submitted_at.desc()).all()
+
+    my_proposal = None
+    if is_contractor_user:
+        my_proposal = Bid.query.filter_by(project_id=project_id, contractor_id=current_user.id).first()
+
+    # =========================
+    # ✅ 圖片一需求：查看對方平均評價 + 質性意見
+    # - 乙方看需求 → 看甲方評價（client_rating）
+    # - 甲方看提案 → 看各乙方評價（contractor_ratings）
+    # =========================
+
+    # 乙方看需求：顯示甲方（委託人）評價摘要
+    client_rating = get_user_rating_summary(project.client_id)
+
+    # 甲方看提案：每個 proposal 的 contractor 顯示評價摘要
+    contractor_ratings = {}
+    if is_client and proposals:
+        unique_contractor_ids = list({p.contractor_id for p in proposals})
+        for cid in unique_contractor_ids:
+            contractor_ratings[cid] = get_user_rating_summary(cid)
+
+    # =========================
+    # ✅ 結案後互評：判斷能不能評
+    # =========================
+    can_review = False
+    review_dims = None
+    my_existing_review = None
+
+    if project.status == 'closed' and project.contractor_id:
+        # 你會評對方
+        if current_user.id == project.client_id:
+            reviewee_id = project.contractor_id
+            reviewee_role = "contractor"
+        elif current_user.id == project.contractor_id:
+            reviewee_id = project.client_id
+            reviewee_role = "client"
+        else:
+            reviewee_id = None
+            reviewee_role = None
+
+        if reviewee_id:
+            can_review = can_submit_review(project, current_user.id, reviewee_id)
+            review_dims = role_dimensions(reviewee_role)
+
+            my_existing_review = Review.query.filter_by(
+                project_id=project.id,
+                reviewer_id=current_user.id,
+                reviewee_id=reviewee_id
+            ).first()
+
+    return render_template(
+        'project_detail.html',
+        project=project,
+        proposals=proposals,
+        is_client=is_client,
+        is_contractor=is_contractor_user,
+        is_contractor_assigned=is_contractor_assigned,
+        my_proposal=my_proposal,
+
+        # ✅ 新增給模板用
+        client_rating=client_rating,
+        contractor_ratings=contractor_ratings,
+        can_review=can_review,
+        review_dims=review_dims,
+        my_existing_review=my_existing_review,
+        review_deadline_days=REVIEW_DEADLINE_DAYS
+    )
 
 
 # ----------------------
