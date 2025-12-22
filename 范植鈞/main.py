@@ -6,7 +6,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from database import Base, engine, get_db
 from auth import router as auth_router, get_current_user, login_user, hash_password
-from routers import projects, bids, upload, review
+from routers import projects, bids, upload
 import models
 from models import User
 import schemas
@@ -16,7 +16,6 @@ templates = Jinja2Templates(directory="templates")
 app = FastAPI(title="Freelance Platform (Session Only)")
 app.include_router(bids.router)
 app.include_router(upload.router)
-app.include_router(review.router)
 
 app.add_middleware(SessionMiddleware, secret_key="super-secret-session-key")
 

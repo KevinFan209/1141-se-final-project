@@ -6,7 +6,6 @@
         body {
             width: 70%;
             margin: auto;
-            background-color: #eef;
         }
         h1 {
             text-align: center;
@@ -100,29 +99,6 @@
                     {% else %}
                         {% if project.status == "open" %}
                             {{project.status}}
-                            <!-- ✅ (A) 乙方查看需求：顯示甲方（委託人）過往平均評價與質性意見 -->
-                                <div style="border:1px solid #ddd; padding:12px; margin:12px 0;">
-                                <h3>⭐ 委託人評價</h3>
-                                <p>
-                                    平均評分：<b>{{ "%.2f"|format(client_rating.avg_rating) }}</b> / 5
-                                    （共 {{ client_rating.count }} 則）
-                                </p>
-
-                                {% if client_ratin.recent_comments and client_rating.recent_comments|length > 0 %}
-                                    <ul>
-                                    {% for c in client_rating.recent_comments %}
-                                        <li>
-                                        <b>{{ c.reviewer_name }}</b>（{{ "%.2f"|format(c.avg_score) }}/5）：
-                                        {{ c.comment }}
-                                        </li>
-                                    {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <p style="color:#666;">目前尚無文字評論。</p>
-                                {% endif %}
-                                </div>
-
-                                <hr>
                             <form method="post" action="/projects/bid" enctype="multipart/form-data">
                                 <input type="hidden" name="project_id" value="{{ project.id }}">
                                 報價: <input type="number" name="price" required><br>

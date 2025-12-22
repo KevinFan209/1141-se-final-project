@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -59,68 +59,7 @@ class Bid(Base):
     price = Column(Float, nullable=False)
     proposal_file = Column(String, nullable=True)
     status = Column(String, default="pending")# pending(接受報價) or accept(同意報價) or rejected(拒絕報價)
-    submitted_at = Column(DateTime, default=datetime.now)
 
     #定義資料表之間的關係
     project = relationship("Project", back_populates="bids")
     contractor = relationship("User")
-
-class Intents(Base): #from 王茂綸 
-    __tablename__ = "intents"
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("projects.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    username = Column(String(50), unique=True, nullable=False)
-    quote = Column(Text, nullable=False)
-    message = Column(Text, nullable=False)
-    attachments = Column(JSON)
-    created_at = Column(DateTime, default=datetime.now)
-
-class Issues(Base): #from 王茂綸
-    __tablename__ = "issues"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"))
-    title = Column(String, nullable=False)
-    status = Column(String, default="open")  # open / resolved
-    created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-class Issues_comments(Base): #from 王茂綸
-    __tablename__ = "issues_comments"
-
-    id = Column(Integer, primary_key=True, index=True)
-    issue_id = Column(Integer, ForeignKey("issues.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-class Replies(Base): #from 王茂綸
-    __tablename__ = "replies"
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, unique=True)
-    responder_id = Column(Integer, unique=True)
-    price_text = Column(String(100), nullable=False)
-    message = Column(Text)
-    attachments = Column(JSON)
-    status = Column(String(30))
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now)
-
-class Review(Base): #from 徐嘉笳
-    __tablename__ = "review"
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), unique=True)
-    reviewer_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    reviewee_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    reviewee_role = Column(String(20), nullable=False)
-    score_1 = Column(Integer, nullable=False)
-    score_2 = Column(Integer, nullable=False)
-    score_3 = Column(Integer, nullable=False)
-    comment = Column(Text)
-    created_at = Column(DateTime, default=datetime.now)
-    def avg_score(self) -> float:
-        return (self.score_1 + self.score_2 + self.score_3) / 3.0
-
-    def __repr__(self):
-        return f'<Review {self.id} P{self.project_id} {self.reviewer_id}->{self.reviewee_id}>'

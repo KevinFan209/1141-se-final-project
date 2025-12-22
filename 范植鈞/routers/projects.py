@@ -91,14 +91,13 @@ async def available_projects_page(request: Request, db: Session = Depends(get_db
     now = datetime.now()
     user = request.session.get("user")
     projects = db.query(models.Project).filter(models.Project.status=="open").all()
-    review = db.query(models.Review).all()
 
     for project in projects:
         if project.proposal_deadline and (now > project.proposal_deadline):
             project.status = "noBid"
             db.commit()            
             
-    return templates.TemplateResponse("list_projects.html", {"request": request, "projects": projects, "user": user, "review": review})
+    return templates.TemplateResponse("list_projects.html", {"request": request, "projects": projects, "user": user})
 
 # GET 專案列表(委託人)
 @router.get("/my_projects", response_class=HTMLResponse)
